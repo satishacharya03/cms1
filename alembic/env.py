@@ -25,9 +25,11 @@ def get_url() -> str:
     url = getattr(settings, "DATABASE_URL", None) or config.get_main_option(
         "sqlalchemy.url", "sqlite:///./matrixcms.db"
     )
+    url = url.strip().strip("<>\"' \t\r\n")
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     return url
+
 
 
 def run_migrations_offline() -> None:
