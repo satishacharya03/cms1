@@ -1,0 +1,558 @@
+{% extends "base.html" %}
+
+{% set active_page = 'datasets' %}
+
+{% block title %}Open Datasets Catalog &mdash; MATRIXCMS{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/">Home</a>
+  <span class="sep">/</span>
+  <span>Data Catalog</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="catalog-header">
+    <div class="d-flex justify-between align-center" style="flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+        <div>
+            <h1 style="font-family: var(--font-serif); font-size: 2.1rem; color: var(--color-academic-navy); margin-bottom: 0.35rem;">Scientific Data Catalog</h1>
+            <p class="text-secondary" style="font-size: 0.95rem; max-width: 720px; margin-bottom: 0; color: var(--color-muted);">
+                Curated repository of observational datasets, geophysical measurements, oceanographic profiles, and biogeochemical data streams collected during field expeditions.
+            </p>
+        </div>
+        <div class="view-toggle-group">
+            <button type="button" class="btn btn-secondary btn-sm active" id="btn-view-table" onclick="setViewMode('table')" title="Table View">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right: 3px;">
+                    <path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18"></path>
+                </svg>
+                Table
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-view-cards" onclick="setViewMode('cards')" title="Card View">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right: 3px;">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                Cards
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="stats-ribbon">
+        <div class="stat-item">
+            <span class="stat-num" id="stat-total-datasets">{{ datasets|length if datasets is defined else 0 }}</span>
+            <span class="stat-label">Archived Datasets</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num">
+                {% if datasets is defined %}
+                    {{ datasets | selectattr('doi', 'defined') | selectattr('doi') | list | length }}
+                {% else %}0{% endif %}
+            </span>
+            <span class="stat-label">DOI-Indexed</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num">100%</span>
+            <span class="stat-label">Open Access (CC-BY-4.0)</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num">
+                {% if expeditions is defined and expeditions %}
+                    {{ expeditions|length }}
+                {% elif datasets is defined %}
+                    {{ datasets | map(attribute='expedition_id') | unique | list | length }}
+                {% else %}0{% endif %}
+            </span>
+            <span class="stat-label">Associated Expeditions</span>
+        </div>
+    </div>
+</section>
+
+<!-- Filter & Search Controls -->
+<section class="filter-panel" style="margin-top: 1.5rem; margin-bottom: 2rem;">
+    <form method="GET" action="" id="dataset-filter-form" class="filter-form">
+        <div class="filter-grid">
+            <!-- Keyword / Variable Search -->
+            <div class="filter-field" style="flex-grow: 2;">
+                <label for="filter-keywords" class="form-label">Search Keywords &amp; Variables</label>
+                <input type="text" name="keywords" id="filter-keywords" class="form-control" 
+                       placeholder="e.g. salinity, sea-ice, CTD, chlorophyll..." 
+                       value="{{ current_keywords if current_keywords is defined and current_keywords else (request.query_params.get('keywords', '') if request is defined else '') }}"
+                       oninput="applyDatasetFilters()">
+            </div>
+
+            <!-- Expedition Filter -->
+            <div class="filter-field">
+                <label for="filter-expedition" class="form-label">Expedition</label>
+                <select name="expedition_id" id="filter-expedition" class="form-control" onchange="applyDatasetFilters()">
+                    <option value="">All Expeditions</option>
+                    {% if expeditions is defined and expeditions %}
+                        {% for exp in expeditions %}
+                            <option value="{{ exp.id }}" {% if current_expedition_id == exp.id or (request is defined and request.query_params.get('expedition_id') == exp.id|string) %}selected{% endif %}>
+                                {{ exp.name }}
+                            </option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+
+            <!-- Year Filter -->
+            <div class="filter-field" style="max-width: 140px;">
+                <label for="filter-year" class="form-label">Year</label>
+                <input type="number" name="year" id="filter-year" class="form-control" 
+                       placeholder="YYYY" min="1950" max="2100"
+                       value="{{ current_year if current_year is defined and current_year else (request.query_params.get('year', '') if request is defined else '') }}"
+                       oninput="applyDatasetFilters()">
+            </div>
+
+            <div class="filter-actions">
+                <button type="button" class="btn btn-outline" onclick="resetDatasetFilters()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    Reset
+                </button>
+            </div>
+        </div>
+    </form>
+    <div class="filter-status-row">
+        <span class="text-muted" style="font-size: 0.8rem;">
+            Showing <strong id="dataset-visible-count">{{ datasets|length if datasets is defined else 0 }}</strong> dataset record(s)
+        </span>
+    </div>
+</section>
+
+<!-- Datasets Main Display Area -->
+<section id="datasets-container">
+    {% if datasets is defined and datasets|length > 0 %}
+        <!-- 1. Structured Academic Table View -->
+        <div id="table-view" class="academic-table-wrap">
+            <table class="academic-table" id="dataset-data-table" style="width: 100%; border-collapse: collapse; font-size: 0.86rem;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--color-border-dark); background-color: #f8fafc;">
+                        <th style="width: 28%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Title &amp; Identifier</th>
+                        <th style="width: 20%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Expedition</th>
+                        <th style="width: 20%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Measured Variables</th>
+                        <th style="width: 14%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Temporal Span</th>
+                        <th style="width: 8%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">License</th>
+                        <th style="width: 10%; padding: 0.65rem 1rem; text-align: right; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ds in datasets %}
+                    <tr class="dataset-row"
+                        style="border-bottom: 1px solid var(--color-border-light);"
+                        data-title="{{ ds.title|lower }}"
+                        data-expedition="{{ ds.expedition.name|lower if ds.expedition else (ds.expedition_id|string) }}"
+                        data-expedition-id="{{ ds.expedition_id }}"
+                        data-variables="{{ ds.variables|lower }}"
+                        data-keywords="{{ ds.keywords|lower if ds.keywords else '' }}"
+                        data-temporal="{{ ds.temporal_coverage|lower }}"
+                        data-year="{{ ds.created_at.year if ds.created_at and ds.created_at.year is defined else '' }}">
+                        <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                            <div style="font-weight: 600; margin-bottom: 0.3rem;">
+                                <a href="/datasets/{{ ds.id }}" style="color: var(--color-academic-navy);">{{ ds.title }}</a>
+                            </div>
+                            <div>
+                                {% if ds.doi %}
+                                    <a href="https://doi.org/{{ ds.doi }}" target="_blank" rel="noopener noreferrer" class="badge badge-doi">
+                                        doi:{{ ds.doi }}
+                                    </a>
+                                {% else %}
+                                    <span class="mono text-muted" style="font-size: 0.74rem;">DATA-{{ ds.id }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                            {% if ds.expedition %}
+                                <a href="/expeditions/{{ ds.expedition.id }}" style="font-size: 0.84rem; color: var(--color-academic-navy);">{{ ds.expedition.name }}</a>
+                            {% else %}
+                                <a href="/expeditions/{{ ds.expedition_id }}" class="mono" style="font-size: 0.82rem;">Expedition #{{ ds.expedition_id }}</a>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                            <div class="variable-tag-list">
+                                {% for var in ds.variables.split(',') %}
+                                    {% if var.strip() %}
+                                        <span class="variable-tag">{{ var.strip() }}</span>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                            <span class="mono" style="font-size: 0.78rem;">{{ ds.temporal_coverage }}</span>
+                        </td>
+                        <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                            <span class="badge badge-license">{{ ds.license }}</span>
+                        </td>
+                        <td style="padding: 0.75rem 1rem; vertical-align: top; text-align: right;">
+                            <a href="/api/datasets/{{ ds.id }}/download" class="btn btn-primary btn-sm" download title="Download raw dataset file">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right: 3px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Download
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 2. Clean List / Cards View (Alternative) -->
+        <div id="cards-view" class="dataset-cards-grid" style="display: none;">
+            {% for ds in datasets %}
+            <article class="card dataset-card"
+                     data-title="{{ ds.title|lower }}"
+                     data-expedition="{{ ds.expedition.name|lower if ds.expedition else (ds.expedition_id|string) }}"
+                     data-expedition-id="{{ ds.expedition_id }}"
+                     data-variables="{{ ds.variables|lower }}"
+                     data-keywords="{{ ds.keywords|lower if ds.keywords else '' }}"
+                     data-temporal="{{ ds.temporal_coverage|lower }}"
+                     data-year="{{ ds.created_at.year if ds.created_at and ds.created_at.year is defined else '' }}">
+                
+                <div class="d-flex justify-between align-center" style="margin-bottom: 0.5rem;">
+                    <span class="badge badge-license">{{ ds.license }}</span>
+                    {% if ds.doi %}
+                        <a href="https://doi.org/{{ ds.doi }}" target="_blank" rel="noopener noreferrer" class="badge badge-doi">
+                            doi:{{ ds.doi }}
+                        </a>
+                    {% endif %}
+                </div>
+
+                <h3 style="font-size: 1.18rem; margin-bottom: 0.5rem; line-height: 1.35; font-family: var(--font-serif);">
+                    <a href="/datasets/{{ ds.id }}" style="color: var(--color-academic-navy);">{{ ds.title }}</a>
+                </h3>
+
+                <div class="text-muted" style="font-size: 0.82rem; margin-bottom: 0.75rem; color: var(--color-muted);">
+                    Originating Expedition:
+                    {% if ds.expedition %}
+                        <a href="/expeditions/{{ ds.expedition.id }}"><strong>{{ ds.expedition.name }}</strong></a>
+                    {% else %}
+                        <a href="/expeditions/{{ ds.expedition_id }}"><strong>Expedition #{{ ds.expedition_id }}</strong></a>
+                    {% endif %}
+                </div>
+
+                <div class="card-meta-box">
+                    <div style="margin-bottom: 0.35rem;">
+                        <span class="meta-label">Observed Variables:</span>
+                        <div class="variable-tag-list" style="margin-top: 0.2rem;">
+                            {% for var in ds.variables.split(',') %}
+                                {% if var.strip() %}
+                                    <span class="variable-tag">{{ var.strip() }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="d-flex justify-between" style="font-size: 0.78rem; margin-top: 0.5rem;">
+                        <div>
+                            <span class="meta-label">Temporal Span:</span>
+                            <span class="mono">{{ ds.temporal_coverage }}</span>
+                        </div>
+                        <div>
+                            <span class="meta-label">Spatial:</span>
+                            <span>{{ ds.spatial_coverage }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-between align-center" style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border-light);">
+                    <a href="/datasets/{{ ds.id }}" class="btn btn-secondary btn-sm">Full Metadata Sheet &rarr;</a>
+                    <a href="/api/datasets/{{ ds.id }}/download" class="btn btn-primary btn-sm" download>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right: 3px;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Download Data
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state-box">
+            <p><strong>No datasets currently cataloged.</strong></p>
+            <p class="text-muted" style="font-size: 0.85rem;">No primary data packages match your search filter criteria.</p>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="resetDatasetFilters()" style="margin-top: 0.75rem;">Reset Filter Parameters</button>
+        </div>
+    {% endif %}
+
+    <!-- Client-side No Match Indicator -->
+    <div id="dataset-no-match" class="empty-state-box" style="display: none;">
+        <p><strong>No datasets found matching your filters.</strong></p>
+        <p class="text-muted" style="font-size: 0.85rem;">Try broadening your search term or selecting "All Expeditions".</p>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="resetDatasetFilters()" style="margin-top: 0.75rem;">Clear All Filters</button>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .view-toggle-group {
+        display: inline-flex;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+    }
+
+    .view-toggle-group .btn {
+        border: none;
+        border-radius: 0;
+        padding: 0.35rem 0.65rem;
+    }
+
+    .view-toggle-group .btn.active {
+        background-color: var(--color-academic-navy);
+        color: #ffffff;
+    }
+
+    .stats-ribbon {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        padding: 1.15rem 1.35rem;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-num {
+        font-family: var(--font-sans);
+        font-size: 1.65rem;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        color: var(--color-academic-navy);
+        line-height: 1.1;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--color-muted);
+        margin-top: 0.25rem;
+    }
+
+    .filter-panel {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 1.15rem 1.35rem;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+
+    @media (min-width: 640px) {
+        .filter-grid {
+            grid-template-columns: 2fr 1.5fr 120px auto;
+        }
+    }
+
+    .filter-field label {
+        display: block;
+        font-size: 0.765rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--color-ink);
+        margin-bottom: 0.35rem;
+    }
+
+    .filter-field input, .filter-field select {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--color-border-dark);
+        border-radius: var(--radius-sm);
+        font-size: 0.885rem;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .filter-field input:focus, .filter-field select:focus {
+        border-color: var(--color-accent-blue);
+        box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.12);
+    }
+
+    .filter-status-row {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--color-border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .variable-tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .variable-tag {
+        font-family: var(--font-mono);
+        font-size: 0.715rem;
+        background-color: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e40af;
+        padding: 0.1rem 0.4rem;
+        border-radius: var(--radius-xs);
+    }
+
+    .dataset-cards-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    @media (min-width: 768px) {
+        .dataset-cards-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .dataset-card {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 1.35rem;
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .dataset-card:hover {
+        border-color: var(--color-border-dark);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+    }
+
+    .card-meta-box {
+        background-color: var(--color-paper);
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--radius-sm);
+        padding: 0.65rem 0.85rem;
+        margin: 0.75rem 0;
+    }
+
+    .meta-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--color-muted);
+        font-weight: 600;
+    }
+
+    .empty-state-box {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        color: var(--color-muted);
+        box-shadow: var(--shadow-sm);
+    }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function setViewMode(mode) {
+        const tableView = document.getElementById('table-view');
+        const cardsView = document.getElementById('cards-view');
+        const btnTable = document.getElementById('btn-view-table');
+        const btnCards = document.getElementById('btn-view-cards');
+
+        if (mode === 'table') {
+            if (tableView) tableView.style.display = 'block';
+            if (cardsView) cardsView.style.display = 'none';
+            btnTable.classList.add('active');
+            btnCards.classList.remove('active');
+        } else {
+            if (tableView) tableView.style.display = 'none';
+            if (cardsView) cardsView.style.display = 'grid';
+            btnCards.classList.add('active');
+            btnTable.classList.remove('active');
+        }
+    }
+
+    function applyDatasetFilters() {
+        const keywords = document.getElementById('filter-keywords').value.trim().toLowerCase();
+        const expId = document.getElementById('filter-expedition').value;
+        const year = document.getElementById('filter-year').value.trim();
+
+        const rows = document.querySelectorAll('.dataset-row');
+        const cards = document.querySelectorAll('.dataset-card');
+        let visibleCount = 0;
+
+        function checkItem(el) {
+            const title = el.dataset.title || '';
+            const variables = el.dataset.variables || '';
+            const itemKeywords = el.dataset.keywords || '';
+            const itemExpId = el.dataset.expeditionId || '';
+            const temporal = el.dataset.temporal || '';
+            const itemYear = el.dataset.year || '';
+
+            const matchesKeywords = !keywords || 
+                title.includes(keywords) || 
+                variables.includes(keywords) || 
+                itemKeywords.includes(keywords);
+
+            const matchesExp = !expId || itemExpId === expId;
+
+            const matchesYear = !year || 
+                temporal.includes(year) || 
+                itemYear.includes(year);
+
+            return matchesKeywords && matchesExp && matchesYear;
+        }
+
+        rows.forEach(row => {
+            if (checkItem(row)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        cards.forEach(card => {
+            if (checkItem(card)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        const countIndicator = document.getElementById('dataset-visible-count');
+        if (countIndicator) countIndicator.textContent = visibleCount;
+
+        const noMatchMsg = document.getElementById('dataset-no-match');
+        if (noMatchMsg) {
+            noMatchMsg.style.display = (visibleCount === 0 && (rows.length > 0 || cards.length > 0)) ? 'block' : 'none';
+        }
+    }
+
+    function resetDatasetFilters() {
+        document.getElementById('filter-keywords').value = '';
+        document.getElementById('filter-expedition').value = '';
+        document.getElementById('filter-year').value = '';
+        applyDatasetFilters();
+    }
+</script>
+{% endblock %}

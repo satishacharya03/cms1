@@ -1,0 +1,125 @@
+# =====================================================================
+# MATRIXCMS - Git Ignore Configuration
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# Python Bytecode & Runtime Caches
+# ---------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# ---------------------------------------------------------------------
+# Virtual Environments & Packages
+# ---------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ---------------------------------------------------------------------
+# Environment Variables & Secrets
+# ---------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# ---------------------------------------------------------------------
+# Databases & Local Storage
+# ---------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+matrixcms.db
+
+# ---------------------------------------------------------------------
+# Application Storage & Uploads
+# ---------------------------------------------------------------------
+storage/uploads/*
+!storage/uploads/.gitkeep
+storage/temp/
+storage/exports/
+storage/backups/
+temp/
+tmp/
+
+# ---------------------------------------------------------------------
+# Testing, Coverage & Linters
+# ---------------------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.mypy_cache/
+.ruff_cache/
+
+# ---------------------------------------------------------------------
+# Logs
+# ---------------------------------------------------------------------
+*.log
+logs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ---------------------------------------------------------------------
+# IDEs & Code Editors
+# ---------------------------------------------------------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+*.bak
+
+# ---------------------------------------------------------------------
+# Operating System Generated Files
+# ---------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------
+# Agent & System Metadata
+# ---------------------------------------------------------------------
+.agents/
+.system_generated/

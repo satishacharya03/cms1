@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% set active_page = 'login' %}
+
+{% block title %}Sign In — MATRIXCMS Expedition &amp; Research Portal{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-institution-label">Chandigarh &bull; CSE Repository</div>
+      <h1 class="auth-title">Portal Sign In</h1>
+      <p class="auth-subtitle">Access authorized expedition records, data ingestion pipelines, and administrative controls.</p>
+    </div>
+
+    <!-- Error message display container -->
+    <div id="auth-error-box" class="alert alert-error" style="display: {% if error %}block{% else %}none{% endif %}; margin-bottom: 1.5rem;">
+      <span class="alert-indicator">[ERROR]</span>
+      <span id="auth-error-text" class="alert-text">{{ error if error else '' }}</span>
+    </div>
+
+    <form id="login-form" action="/login" method="post" class="auth-form">
+      <div class="form-group">
+        <label for="email" class="form-label">Institutional Email Address</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email" 
+          class="form-control" 
+          placeholder="name@chandigarh.edu" 
+          required 
+          autocomplete="email"
+          autofocus
+        >
+      </div>
+
+      <div class="form-group">
+        <div class="form-label-row">
+          <label for="password" class="form-label">Account Password</label>
+        </div>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          class="form-control" 
+          placeholder="Enter your account password" 
+          required 
+          autocomplete="current-password"
+        >
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" id="submit-btn" class="btn btn-primary btn-block">Sign In to Portal</button>
+      </div>
+    </form>
+
+    <!-- Demo Credentials Callout -->
+    <div class="demo-box" role="complementary" aria-label="Demonstration Credentials">
+      <div class="demo-box-header">
+        <span class="demo-box-badge">DEMO ACCESS</span>
+        <span class="demo-box-title">Institutional Evaluation Credentials</span>
+      </div>
+      <div class="demo-box-body">
+        <div class="demo-row">
+          <span class="demo-key">Email:</span>
+          <code class="demo-val">admin@chandigarh.edu</code>
+        </div>
+        <div class="demo-row">
+          <span class="demo-key">Password:</span>
+          <code class="demo-val">admin123</code>
+        </div>
+      </div>
+      <div class="demo-box-footer">
+        Administrative role granted for full curation, DOI issuance, and outreach approval.
+      </div>
+    </div>
+
+    <div class="auth-footer-link">
+      <span>Do not possess an authorized account?</span>
+      <a href="/register" class="link-underlined">Register for Researcher Access &rarr;</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function() {
+    const form = document.getElementById('login-form');
+    const errorBox = document.getElementById('auth-error-box');
+    const errorText = document.getElementById('auth-error-text');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (!form) return;
+
+    form.addEventListener('submit', async function(e) {
+      // Check if server rendered a pure form handler or if we use API endpoint
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) return;
+
+      // Attempt API authentication
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Authenticating...';
+        
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, password: password })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.access_token) {
+            // Store token in cookie for server-side template rendering
+            document.cookie = `access_token=Bearer ${data.access_token}; path=/; max-age=604800; SameSite=Lax`;
+            localStorage.setItem('matrixcms_token', data.access_token);
+            if (data.user) {
+              localStorage.setItem('matrixcms_user', JSON.stringify(data.user));
+            }
+            // Redirect to home or admin
+            const dest = (data.user && (data.user.role === 'admin' || data.user.role === 'data_manager')) ? '/admin' : '/';
+            window.location.href = dest;
+            return;
+          }
+        }
+
+        // If not successful
+        const errData = await response.json().catch(() => ({ detail: 'Authentication failed.' }));
+        errorText.textContent = errData.detail || 'Incorrect email or password. Please re-check credentials.';
+        errorBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In to Portal';
+      } catch (err) {
+        // Fallback: allow native form submit to proceed if API call failed
+        form.submit();
+      }
+    });
+  })();
+</script>
+{% endblock %}

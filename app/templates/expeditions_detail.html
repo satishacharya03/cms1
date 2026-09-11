@@ -1,0 +1,744 @@
+{% extends "base.html" %}
+
+{% set active_page = 'expeditions' %}
+
+{% block title %}{{ expedition.name }} &mdash; Expedition Dossier &mdash; MATRIXCMS{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/">Home</a>
+  <span class="sep">/</span>
+  <a href="/expeditions">Expeditions</a>
+  <span class="sep">/</span>
+  <span>{{ expedition.name }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<article class="expedition-detail">
+    <!-- Back Link & Top Metadata -->
+    <div class="d-flex justify-between align-center" style="margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+        <a href="/expeditions" class="back-link">&larr; Back to Expeditions Directory</a>
+        <div class="d-flex align-center gap-1">
+            <span class="mono text-muted" style="font-size: 0.76rem;">EXP-ID: #{{ "%04d"|format(expedition.id) if expedition.id is defined else expedition.id }}</span>
+            <span class="badge badge-status-{{ expedition.status|lower }}">{{ expedition.status }}</span>
+        </div>
+    </div>
+
+    <!-- Expedition Header Banner -->
+    <header class="detail-header-card">
+        <div class="header-main">
+            <h1 class="expedition-headline">{{ expedition.name }}</h1>
+            
+            <div class="header-metadata-grid">
+                <div class="meta-cell">
+                    <span class="meta-cell-label">Geographic Region</span>
+                    <span class="meta-cell-value">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 3px;" aria-hidden="true">
+                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                            <line x1="8" y1="2" x2="8" y2="18"></line>
+                            <line x1="16" y1="6" x2="16" y2="22"></line>
+                        </svg>
+                        {{ expedition.region }}
+                    </span>
+                </div>
+
+                <div class="meta-cell">
+                    <span class="meta-cell-label">Chief Scientist / Team Leader</span>
+                    <span class="meta-cell-value">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 3px;" aria-hidden="true">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        {{ expedition.team_leader }}
+                    </span>
+                </div>
+
+                <div class="meta-cell">
+                    <span class="meta-cell-label">Operational Date Span</span>
+                    <span class="meta-cell-value mono">
+                        {{ expedition.start_date.strftime('%Y-%m-%d') if expedition.start_date and expedition.start_date.strftime is defined else expedition.start_date }}
+                        &rarr;
+                        {{ expedition.end_date.strftime('%Y-%m-%d') if expedition.end_date and expedition.end_date.strftime is defined else expedition.end_date }}
+                    </span>
+                </div>
+
+                <div class="meta-cell">
+                    <span class="meta-cell-label">Repository Status</span>
+                    <span class="meta-cell-value">
+                        <span class="badge badge-status-{{ expedition.status|lower }}">{{ expedition.status|capitalize }}</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Scientific Objectives Section -->
+    <section class="objectives-card">
+        <h2 class="section-title">Expedition Objectives &amp; Scientific Scope</h2>
+        <div class="objectives-body" style="white-space: pre-line;">
+            {% if expedition.objectives %}
+                {{ expedition.objectives }}
+            {% else %}
+                <p class="text-muted">No formal scientific objectives description recorded for this expedition.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Structured Tabbed Outputs Section -->
+    <section class="linked-outputs-section">
+        <div class="tabs-nav-bar" role="tablist" aria-label="Expedition outputs tabs">
+            <button type="button" class="tab-btn active" role="tab" id="tab-reports" aria-selected="true" aria-controls="panel-reports" onclick="switchTab('reports')">
+                Reports
+                <span class="tab-badge">{{ expedition.reports|length if expedition.reports is defined else 0 }}</span>
+            </button>
+            <button type="button" class="tab-btn" role="tab" id="tab-datasets" aria-selected="false" aria-controls="panel-datasets" onclick="switchTab('datasets')">
+                Datasets
+                <span class="tab-badge">{{ expedition.datasets|length if expedition.datasets is defined else 0 }}</span>
+            </button>
+            <button type="button" class="tab-btn" role="tab" id="tab-publications" aria-selected="false" aria-controls="panel-publications" onclick="switchTab('publications')">
+                Publications
+                <span class="tab-badge">{{ expedition.publications|length if expedition.publications is defined else 0 }}</span>
+            </button>
+            <button type="button" class="tab-btn" role="tab" id="tab-media" aria-selected="false" aria-controls="panel-media" onclick="switchTab('media')">
+                Media Gallery
+                <span class="tab-badge">{{ expedition.media|length if expedition.media is defined else 0 }}</span>
+            </button>
+        </div>
+
+        <!-- ================= PANEL 1: REPORTS ================= -->
+        <div class="tab-panel active" id="panel-reports" role="tabpanel" aria-labelledby="tab-reports">
+            <div class="panel-intro">
+                <h3 style="font-family: var(--font-sans); font-size: 1.15rem; font-weight: 700; color: var(--color-academic-navy); margin-bottom: 0.25rem;">Cruise &amp; Field Reports</h3>
+                <p class="text-muted" style="font-size: 0.84rem; color: var(--color-muted);">Technical voyage reports, station logs, and preliminary field summaries produced by the scientific party.</p>
+            </div>
+
+            {% if expedition.reports is defined and expedition.reports|length > 0 %}
+                <div class="academic-table-wrap">
+                    <table class="academic-table" style="width: 100%; border-collapse: collapse; font-size: 0.86rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--color-border-dark); background-color: #f8fafc;">
+                                <th style="width: 35%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Report Title &amp; Abstract</th>
+                                <th style="width: 25%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Authors</th>
+                                <th style="width: 20%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Identifier (DOI)</th>
+                                <th style="width: 20%; padding: 0.65rem 1rem; text-align: right; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for report in expedition.reports %}
+                            <tr style="border-bottom: 1px solid var(--color-border-light);">
+                                <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                                    <div style="font-weight: 600; margin-bottom: 0.25rem; color: var(--color-ink);">{{ report.title }}</div>
+                                    {% if report.abstract %}
+                                        <div class="text-muted" style="font-size: 0.78rem; line-height: 1.4; color: var(--color-muted);">
+                                            {{ report.abstract[:130] }}{% if report.abstract|length > 130 %}...{% endif %}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                                    <span style="font-size: 0.82rem; color: var(--color-ink-light);">{{ report.authors }}</span>
+                                </td>
+                                <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                                    {% if report.doi %}
+                                        <a href="https://doi.org/{{ report.doi }}" target="_blank" rel="noopener noreferrer" class="badge badge-doi">
+                                            doi:{{ report.doi }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted mono" style="font-size: 0.78rem; color: var(--color-muted);">Unassigned</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 0.75rem 1rem; vertical-align: top; text-align: right;">
+                                    <a href="/api/reports/{{ report.id }}/download" class="btn btn-secondary btn-sm" download>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right: 3px;">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="7 10 12 15 17 10"></polyline>
+                                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                                        </svg>
+                                        Download Report
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-tab-box">
+                    <p>No cruise reports have been archived for this expedition yet.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- ================= PANEL 2: DATASETS ================= -->
+        <div class="tab-panel" id="panel-datasets" role="tabpanel" aria-labelledby="tab-datasets" style="display: none;">
+            <div class="panel-intro">
+                <h3 style="font-family: var(--font-sans); font-size: 1.15rem; font-weight: 700; color: var(--color-academic-navy); margin-bottom: 0.25rem;">Primary Datasets &amp; Measurements</h3>
+                <p class="text-muted" style="font-size: 0.84rem; color: var(--color-muted);">Observational data streams, NetCDF grids, calibrated sensor profiles, and laboratory specimen tables.</p>
+            </div>
+
+            {% if expedition.datasets is defined and expedition.datasets|length > 0 %}
+                <div class="academic-table-wrap">
+                    <table class="academic-table" style="width: 100%; border-collapse: collapse; font-size: 0.86rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--color-border-dark); background-color: #f8fafc;">
+                                <th style="width: 30%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Dataset Title</th>
+                                <th style="width: 25%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Measured Variables</th>
+                                <th style="width: 25%; padding: 0.65rem 1rem; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Spatial &amp; Temporal Coverage</th>
+                                <th style="width: 20%; padding: 0.65rem 1rem; text-align: right; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted);">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dataset in expedition.datasets %}
+                            <tr style="border-bottom: 1px solid var(--color-border-light);">
+                                <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                                    <div style="font-weight: 600; margin-bottom: 0.25rem;">
+                                        <a href="/datasets/{{ dataset.id }}" style="color: var(--color-academic-navy);">{{ dataset.title }}</a>
+                                    </div>
+                                    {% if dataset.doi %}
+                                        <a href="https://doi.org/{{ dataset.doi }}" target="_blank" rel="noopener noreferrer" class="badge badge-doi">
+                                            doi:{{ dataset.doi }}
+                                        </a>
+                                    {% endif %}
+                                    <span class="badge badge-license">{{ dataset.license }}</span>
+                                </td>
+                                <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                                    <div class="mono" style="font-size: 0.78rem; color: var(--color-ink-light); line-height: 1.4;">
+                                        {{ dataset.variables }}
+                                    </div>
+                                </td>
+                                <td style="padding: 0.75rem 1rem; vertical-align: top;">
+                                    <div style="font-size: 0.8rem;">
+                                        <div><strong>Spatial:</strong> {{ dataset.spatial_coverage }}</div>
+                                        <div><strong>Temporal:</strong> <span class="mono">{{ dataset.temporal_coverage }}</span></div>
+                                    </div>
+                                </td>
+                                <td style="padding: 0.75rem 1rem; vertical-align: top; text-align: right;">
+                                    <div style="display: flex; justify-content: flex-end; gap: 0.35rem; flex-wrap: wrap;">
+                                        <a href="/datasets/{{ dataset.id }}" class="btn btn-secondary btn-sm">Details</a>
+                                        <a href="/api/datasets/{{ dataset.id }}/download" class="btn btn-primary btn-sm" download>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right: 3px;">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="7 10 12 15 17 10"></polyline>
+                                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                                            </svg>
+                                            Download
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-tab-box">
+                    <p>No primary datasets have been published under this expedition yet.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- ================= PANEL 3: PUBLICATIONS ================= -->
+        <div class="tab-panel" id="panel-publications" role="tabpanel" aria-labelledby="tab-publications" style="display: none;">
+            <div class="panel-intro">
+                <h3 style="font-family: var(--font-sans); font-size: 1.15rem; font-weight: 700; color: var(--color-academic-navy); margin-bottom: 0.25rem;">Peer-Reviewed Publications</h3>
+                <p class="text-muted" style="font-size: 0.84rem; color: var(--color-muted);">Journal articles, scholarly monographs, and proceedings citing observational data from this campaign.</p>
+            </div>
+
+            {% if expedition.publications is defined and expedition.publications|length > 0 %}
+                <div class="publications-list">
+                    {% for pub in expedition.publications %}
+                    <article class="pub-card">
+                        <div class="pub-header">
+                            <span class="pub-journal">{{ pub.journal }}</span>
+                            <span class="pub-year mono">{{ pub.year }}</span>
+                        </div>
+                        <h4 class="pub-title">
+                            <a href="{{ pub.link }}" target="_blank" rel="noopener noreferrer">{{ pub.title }}</a>
+                        </h4>
+                        <div class="pub-authors">{{ pub.authors }}</div>
+                        
+                        {% if pub.abstract %}
+                            <p class="pub-abstract">{{ pub.abstract }}</p>
+                        {% endif %}
+
+                        <div class="pub-footer">
+                            {% if pub.doi %}
+                                <a href="https://doi.org/{{ pub.doi }}" target="_blank" rel="noopener noreferrer" class="badge badge-doi">
+                                    doi:{{ pub.doi }}
+                                </a>
+                            {% endif %}
+                            <a href="{{ pub.link }}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+                                Article Link &rarr;
+                            </a>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-tab-box">
+                    <p>No peer-reviewed publications have been linked to this expedition yet.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- ================= PANEL 4: MEDIA GALLERY ================= -->
+        <div class="tab-panel" id="panel-media" role="tabpanel" aria-labelledby="tab-media" style="display: none;">
+            <div class="panel-intro">
+                <h3 style="font-family: var(--font-sans); font-size: 1.15rem; font-weight: 700; color: var(--color-academic-navy); margin-bottom: 0.25rem;">Expedition Media &amp; Field Photography</h3>
+                <p class="text-muted" style="font-size: 0.84rem; color: var(--color-muted);">High-resolution photographic documentation, instrument deployments, and video recordings from the field.</p>
+            </div>
+
+            {% if expedition.media is defined and expedition.media|length > 0 %}
+                <div class="media-grid">
+                    {% for item in expedition.media %}
+                    <figure class="media-card">
+                        <div class="media-preview-box" onclick="openMediaPreview('{{ item.id }}', '{{ item.media_type|lower }}', '{{ item.caption|replace('\'', '\\\'') if item.caption else '' }}')">
+                            {% if item.media_type|lower == 'video' %}
+                                <div class="media-video-placeholder">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                    </svg>
+                                    <span class="mono" style="font-size: 0.76rem; margin-top: 0.35rem;">VIDEO RECORDING</span>
+                                </div>
+                            {% else %}
+                                <img src="/api/media/{{ item.id }}/file" 
+                                     alt="{{ item.caption }}" 
+                                     loading="lazy" 
+                                     class="media-img"
+                                     onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22 viewBox=%220 0 300 200%22><rect fill=%22%23f4f4f5%22 width=%22300%22 height=%22200%22/><text fill=%22%2371717a%22 font-family=%22sans-serif%22 font-size=%2212%22 text-anchor=%22middle%22 x=%22150%22 y=%22100%22>Photo Archival Record</text></svg>';">
+                            {% endif %}
+                            <span class="media-type-badge">{{ item.media_type|upper }}</span>
+                        </div>
+                        <figcaption class="media-caption-area">
+                            <p class="media-caption-text">{{ item.caption }}</p>
+                            <div class="media-meta-bar">
+                                {% if item.location %}
+                                    <span class="media-loc">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                            <circle cx="12" cy="10" r="3"></circle>
+                                        </svg>
+                                        {{ item.location }}
+                                    </span>
+                                {% endif %}
+                                <a href="/api/media/{{ item.id }}/file" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.45rem; font-size: 0.72rem;">
+                                    View Full &rarr;
+                                </a>
+                            </div>
+                        </figcaption>
+                    </figure>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-tab-box">
+                    <p>No media files or photographs have been uploaded for this expedition yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+</article>
+
+<!-- Media Lightbox Modal -->
+<div class="modal-overlay" id="mediaPreviewModal" role="dialog" aria-modal="true">
+    <div class="modal-box" style="max-width: 800px; text-align: center;">
+        <div class="modal-header">
+            <h4 id="media-modal-caption" style="font-size: 0.95rem; text-align: left; font-family: var(--font-sans); color: var(--color-academic-navy);">Media Preview</h4>
+            <button type="button" class="modal-close-btn" onclick="closeMediaPreview()">&times;</button>
+        </div>
+        <div id="media-modal-content" style="margin: 1rem 0;"></div>
+        <div style="text-align: right;">
+            <a href="#" id="media-modal-direct-link" target="_blank" class="btn btn-secondary btn-sm">Open File in New Tab</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .back-link {
+        font-size: 0.84rem;
+        color: var(--color-muted);
+        text-decoration: none;
+    }
+    .back-link:hover {
+        color: var(--color-academic-navy);
+        text-decoration: underline;
+    }
+
+    .detail-header-card {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .expedition-headline {
+        font-family: var(--font-serif);
+        font-size: 2.2rem;
+        color: var(--color-academic-navy);
+        margin-bottom: 1.25rem;
+        line-height: 1.2;
+    }
+
+    .header-metadata-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        border-top: 1px solid var(--color-border-light);
+        padding-top: 1.25rem;
+    }
+
+    @media (min-width: 640px) {
+        .header-metadata-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (min-width: 992px) {
+        .header-metadata-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    .meta-cell {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .meta-cell-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-muted);
+        margin-bottom: 0.3rem;
+    }
+
+    .meta-cell-value {
+        font-size: 0.92rem;
+        font-weight: 500;
+        color: var(--color-ink);
+    }
+
+    .objectives-card {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        padding: 1.75rem;
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-family: var(--font-serif);
+        font-size: 1.3rem;
+        color: var(--color-academic-navy);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .objectives-body {
+        font-size: 0.95rem;
+        color: var(--color-ink-light);
+        line-height: 1.7;
+    }
+
+    /* Tabs Styling */
+    .tabs-nav-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-bottom: 2px solid var(--color-border-dark);
+        margin-bottom: 1.5rem;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .tab-btn {
+        background: none;
+        border: none;
+        padding: 0.75rem 1.1rem;
+        font-family: var(--font-sans);
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--color-muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        transition: all 0.1s ease;
+    }
+
+    .tab-btn:hover {
+        color: var(--color-academic-navy);
+    }
+
+    .tab-btn.active {
+        color: var(--color-academic-navy);
+        font-weight: 700;
+        border-bottom-color: var(--color-academic-navy);
+    }
+
+    .tab-badge {
+        font-size: 0.7rem;
+        padding: 0.1rem 0.4rem;
+        background-color: #f1f4f8;
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        color: var(--color-muted);
+    }
+
+    .panel-intro {
+        margin-bottom: 1rem;
+    }
+
+    .empty-tab-box {
+        background-color: var(--color-canvas);
+        border: 1px dashed var(--color-border-dark);
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        color: var(--color-muted);
+        border-radius: 4px;
+        font-size: 0.88rem;
+    }
+
+    .publications-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .pub-card {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        padding: 1.25rem;
+    }
+
+    .pub-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.4rem;
+    }
+
+    .pub-journal {
+        color: var(--color-academic-navy);
+        font-weight: 600;
+    }
+
+    .pub-year {
+        color: var(--color-muted);
+    }
+
+    .pub-title {
+        font-family: var(--font-serif);
+        font-size: 1.15rem;
+        margin-bottom: 0.4rem;
+        line-height: 1.35;
+    }
+
+    .pub-title a {
+        color: var(--color-academic-navy);
+        text-decoration: none;
+    }
+
+    .pub-title a:hover {
+        text-decoration: underline;
+    }
+
+    .pub-authors {
+        font-size: 0.82rem;
+        color: var(--color-ink-light);
+        margin-bottom: 0.6rem;
+    }
+
+    .pub-abstract {
+        font-size: 0.84rem;
+        color: var(--color-ink-light);
+        line-height: 1.5;
+        margin-bottom: 0.75rem;
+    }
+
+    .pub-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--color-border-light);
+    }
+
+    .media-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1.25rem;
+    }
+
+    .media-card {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .media-preview-box {
+        position: relative;
+        height: 180px;
+        background-color: #f1f4f8;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .media-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.2s ease;
+    }
+
+    .media-preview-box:hover .media-img {
+        transform: scale(1.02);
+    }
+
+    .media-video-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: var(--color-muted);
+    }
+
+    .media-type-badge {
+        position: absolute;
+        bottom: 8px;
+        left: 8px;
+        background: rgba(25, 50, 84, 0.85);
+        color: #ffffff;
+        font-size: 0.65rem;
+        font-family: var(--font-mono);
+        padding: 0.15rem 0.4rem;
+        border-radius: 2px;
+        letter-spacing: 0.05em;
+    }
+
+    .media-caption-area {
+        padding: 0.85rem;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .media-caption-text {
+        font-size: 0.82rem;
+        color: var(--color-ink);
+        line-height: 1.4;
+        margin-bottom: 0.65rem;
+    }
+
+    .media-meta-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.74rem;
+        color: var(--color-muted);
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--color-border-light);
+    }
+
+    .media-loc {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function switchTab(tabName) {
+        const panels = document.querySelectorAll('.tab-panel');
+        const buttons = document.querySelectorAll('.tab-btn');
+
+        panels.forEach(panel => {
+            panel.style.display = 'none';
+            panel.classList.remove('active');
+        });
+
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+        });
+
+        const activePanel = document.getElementById(`panel-${tabName}`);
+        const activeBtn = document.getElementById(`tab-${tabName}`);
+
+        if (activePanel && activeBtn) {
+            activePanel.style.display = 'block';
+            activePanel.classList.add('active');
+            activeBtn.classList.add('active');
+            activeBtn.setAttribute('aria-selected', 'true');
+            if (history.replaceState) {
+                history.replaceState(null, null, `#${tabName}`);
+            }
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const hash = window.location.hash.replace('#', '');
+        if (['reports', 'datasets', 'publications', 'media'].includes(hash)) {
+            switchTab(hash);
+        }
+    });
+
+    function openMediaPreview(mediaId, mediaType, caption) {
+        const modal = document.getElementById('mediaPreviewModal');
+        const modalCaption = document.getElementById('media-modal-caption');
+        const modalContent = document.getElementById('media-modal-content');
+        const directLink = document.getElementById('media-modal-direct-link');
+        const fileUrl = `/api/media/${mediaId}/file`;
+
+        modalCaption.textContent = caption || 'Media Archival Item';
+        directLink.href = fileUrl;
+
+        if (mediaType === 'video') {
+            modalContent.innerHTML = `
+                <video controls autoplay style="max-width: 100%; max-height: 60vh; background: #000;">
+                    <source src="${fileUrl}">
+                    Your browser does not support video playback.
+                </video>
+            `;
+        } else {
+            modalContent.innerHTML = `
+                <img src="${fileUrl}" alt="${caption}" style="max-width: 100%; max-height: 60vh; object-fit: contain;">
+            `;
+        }
+
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeMediaPreview() {
+        const modal = document.getElementById('mediaPreviewModal');
+        const modalContent = document.getElementById('media-modal-content');
+        modalContent.innerHTML = '';
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    document.getElementById('mediaPreviewModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeMediaPreview();
+        }
+    });
+</script>
+{% endblock %}

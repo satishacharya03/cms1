@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% set active_page = 'about' %}
+
+{% block title %}About MATRIXCMS — Chandigarh CSE Expedition &amp; Research Portal{% endblock %}
+
+{% block content %}
+<div class="page-container page-about">
+
+  <!-- Document Header -->
+  <header class="doc-header">
+    <div class="doc-meta-pre">Institutional Repository Specification &bull; Open Science Protocol</div>
+    <h1 class="doc-title">About MATRIXCMS</h1>
+    <p class="doc-lead">
+      The official expedition data management, sensor telemetry archive, and automated scientific communication repository of the Department of Computer Science &amp; Engineering, Chandigarh.
+    </p>
+  </header>
+
+  <div class="doc-body">
+
+    <!-- Section 1: Institution Details -->
+    <section class="doc-section">
+      <h2 class="doc-section-heading">1. Institutional Context &amp; Governance</h2>
+      <p>
+        <strong>MATRIXCMS</strong> was conceived and developed within the <strong>Department of Computer Science &amp; Engineering at Chandigarh</strong> to bridge empirical environmental engineering with computational data infrastructure. Academic field campaigns frequently gather crucial environmental, atmospheric, and geophysical observations in challenging high-altitude or riverine terrains; MATRIXCMS serves as the permanent digital repository for this scholarly output.
+      </p>
+      <p>
+        The portal is maintained under the direct auspices of the Department’s Computational Sensing and Environmental Informatics Research Group, providing custody, digital preservation, and public dissemination of primary scientific materials.
+      </p>
+    </section>
+
+    <!-- Section 2: Portal Mission -->
+    <section class="doc-section">
+      <h2 class="doc-section-heading">2. Portal Mission &amp; Functional Pillars</h2>
+      <div class="pillars-grid">
+        <div class="pillar-card">
+          <h3 class="pillar-title">Open Science &amp; Reproducibility</h3>
+          <p class="pillar-desc">
+            MATRIXCMS guarantees unrestricted public access to raw and calibrated observational data, software processing notebooks, and technical instrumentation logs. We ensure that empirical findings can be independently inspected, replicated, and cited by international research institutions.
+          </p>
+        </div>
+
+        <div class="pillar-card">
+          <h3 class="pillar-title">Longitudinal Expedition Archival</h3>
+          <p class="pillar-desc">
+            Every scientific campaign—ranging from high-altitude permafrost acoustic mesh deployments to regional atmospheric aerosol transects—is documented with rigorous provenance: team leadership, spatial coordinates, calendar windows, instruments, and linked publications.
+          </p>
+        </div>
+
+        <div class="pillar-card">
+          <h3 class="pillar-title">Automated Outreach via Free LLMs</h3>
+          <p class="pillar-desc">
+            To bridge technical field reports and civic comprehension, the portal integrates zero-cost, high-performance open-weight language model backends (including Groq API and Cloudflare Workers AI running <strong>Meta Llama 3.1 8B Instruct</strong> and <strong>Llama 3.2</strong>). The system autonomously drafts accessible web summaries, scientific abstracts, and outreach bulletins.
+          </p>
+          <p class="pillar-subnote">
+            <em>Human-in-the-Loop Safeguard:</em> Every automated outreach artifact is staged in a strict <code>pending_review</code> state and requires manual validation by faculty data managers prior to public indexation.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Architecture & Metadata Standards -->
+    <section class="doc-section">
+      <h2 class="doc-section-heading">3. Architecture &amp; Metadata Standards</h2>
+      <p>
+        To ensure enduring scholarly interoperability, MATRIXCMS adheres to international scientific metadata conventions:
+      </p>
+
+      <div class="standards-list">
+        <div class="standard-item">
+          <div class="standard-badge">FAIR Principles</div>
+          <div class="standard-detail">
+            <strong>Findable, Accessible, Interoperable, and Reusable:</strong> All datasets incorporate rich structured descriptive metadata, persistent identifiers, standardized parameter naming conventions, and open machine-readable formats (CSV, JSON, NetCDF, GeoTIFF).
+          </div>
+        </div>
+
+        <div class="standard-item">
+          <div class="standard-badge">DOI Registration</div>
+          <div class="standard-detail">
+            <strong>Persistent Digital Object Identifiers:</strong> Datasets and technical monographs are prepared for permanent DOI minting via DataCite and Zenodo integrations, guaranteeing stable citations across international journals and bibliometric indices.
+          </div>
+        </div>
+
+        <div class="standard-item">
+          <div class="standard-badge">CC-BY-4.0</div>
+          <div class="standard-detail">
+            <strong>Creative Commons Attribution 4.0 International:</strong> All published observational data, photographic evidence, and public reports are licensed under CC-BY-4.0, granting worldwide permissions to share, adapt, and build upon our work with proper attribution.
+          </div>
+        </div>
+
+        <div class="standard-item">
+          <div class="standard-badge">Dublin Core &amp; ISO 19115</div>
+          <div class="standard-detail">
+            <strong>Geospatial &amp; Bibliographic Schema:</strong> Field observations conform to Dublin Core Element Sets for document classification and ISO 19115 geographic information metadata for spatial coordinates and bounding polygons.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: System Stack -->
+    <section class="doc-section">
+      <h2 class="doc-section-heading">4. Technical Specifications</h2>
+      <div class="specs-table-wrapper">
+        <table class="academic-table spec-table">
+          <tbody>
+            <tr>
+              <th scope="row" style="width: 25%;">Core Web Framework</th>
+              <td>FastAPI (Asynchronous Python ASGI Web Architecture)</td>
+            </tr>
+            <tr>
+              <th scope="row">Templating Engine</th>
+              <td>Jinja2 with clean server-side rendering and semantic HTML5</td>
+            </tr>
+            <tr>
+              <th scope="row">Relational ORM</th>
+              <td>SQLAlchemy 2.0 with Alembic schema migration framework</td>
+            </tr>
+            <tr>
+              <th scope="row">Database Engine</th>
+              <td>SQLite (Development/Edge) / PostgreSQL (Production)</td>
+            </tr>
+            <tr>
+              <th scope="row">Automated LLM Engine</th>
+              <td>Groq Cloud &amp; Cloudflare Workers AI (Meta Llama 3.1 8B / 70B &amp; Llama 3.2 Instruct)</td>
+            </tr>
+            <tr>
+              <th scope="row">Task Scheduling</th>
+              <td>APScheduler for periodic content generation and sensor health polling</td>
+            </tr>
+            <tr>
+              <th scope="row">Authentication</th>
+              <td>JWT (JSON Web Tokens) with Argon2/BCrypt hashing and RBAC enforcement</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 5: Department Contact & Inquiries -->
+    <section class="doc-section">
+      <h2 class="doc-section-heading">5. Department Contact &amp; Inquiries</h2>
+      <div class="contact-box">
+        <div class="contact-col">
+          <h4 class="contact-title">Academic &amp; Field Coordination</h4>
+          <p class="contact-meta">
+            Department of Computer Science &amp; Engineering<br>
+            Chandigarh Campus, Academic Block C<br>
+            Inquiries: <a href="mailto:cse-expeditions@chandigarh.edu">cse-expeditions@chandigarh.edu</a>
+          </p>
+        </div>
+        <div class="contact-col">
+          <h4 class="contact-title">Data Stewardship Desk</h4>
+          <p class="contact-meta">
+            Research Data Curation &amp; DOI Minting Office<br>
+            Computational Sensing Group<br>
+            Email: <a href="mailto:data-curation@chandigarh.edu">data-curation@chandigarh.edu</a>
+          </p>
+        </div>
+        <div class="contact-col">
+          <h4 class="contact-title">System &amp; API Inquiries</h4>
+          <p class="contact-meta">
+            Portal Technical Administration<br>
+            Demonstration Lead: <a href="mailto:admin@chandigarh.edu">admin@chandigarh.edu</a><br>
+            Status: Operating normally (2026 Release)
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}Scientific Publications & Bibliography{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/">Home</a>
+  <span class="sep">/</span>
+  <span>Scientific Publications</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="page-header-content">
+    <div class="page-kicker">Peer-Reviewed Research</div>
+    <h1>Scientific Publications</h1>
+    <p class="page-description">
+      Bibliography of journal articles, scholarly monographs, and peer-reviewed papers resulting from scientific expeditions and marine observational campaigns.
+    </p>
+  </div>
+  <div>
+    <span class="badge badge-navy">{{ publications|length if publications is defined else 0 }} Publications Listed</span>
+  </div>
+</section>
+
+<!-- Filter Toolbar -->
+<section class="filter-panel">
+  <form method="get" action="/publications" class="filter-form">
+    <div class="filter-group" style="flex: 2 1 240px;">
+      <label class="filter-label" for="filter-q">Search Paper / Author</label>
+      <input type="text" id="filter-q" name="q" class="form-input" 
+             placeholder="Search by title, author, journal..." 
+             value="{{ selected_q or request.query_params.get('q', '') if request is defined else (selected_q or '') }}">
+    </div>
+
+    <div class="filter-group" style="flex: 1 1 180px;">
+      <label class="filter-label" for="filter-year">Publication Year</label>
+      <select id="filter-year" name="year" class="form-select">
+        <option value="">All Years</option>
+        {% if available_years is defined %}
+          {% for y in available_years %}
+            <option value="{{ y }}" {% if selected_year|string == y|string or (request is defined and request.query_params.get('year') == y|string) %}selected{% endif %}>
+              {{ y }}
+            </option>
+          {% endfor %}
+        {% else %}
+          {% for y in [2026, 2025, 2024, 2023, 2022, 2021, 2020] %}
+            <option value="{{ y }}" {% if selected_year|string == y|string or (request is defined and request.query_params.get('year') == y|string) %}selected{% endif %}>
+              {{ y }}
+            </option>
+          {% endfor %}
+        {% endif %}
+      </select>
+    </div>
+
+    <div class="filter-group" style="flex: 1 1 220px;">
+      <label class="filter-label" for="filter-expedition">Expedition</label>
+      <select id="filter-expedition" name="expedition_id" class="form-select">
+        <option value="">All Expeditions</option>
+        {% if expeditions is defined %}
+          {% for exp in expeditions %}
+            <option value="{{ exp.id }}" {% if selected_expedition_id|string == exp.id|string or (request is defined and request.query_params.get('expedition_id') == exp.id|string) %}selected{% endif %}>
+              {{ exp.name }}
+            </option>
+          {% endfor %}
+        {% endif %}
+      </select>
+    </div>
+
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+        Filter
+      </button>
+      <a href="/publications" class="btn btn-outline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        Reset
+      </a>
+    </div>
+  </form>
+</section>
+
+<!-- Bibliography Listing -->
+<section class="bibliography-container">
+  {% if publications and publications|length > 0 %}
+    <ol class="biblio-list">
+      {% for pub in publications %}
+        <li class="biblio-item" id="pub-{{ pub.id }}">
+          <div class="biblio-citation-block">
+            <!-- Authors & Year -->
+            <span class="biblio-authors">{{ pub.authors }}</span>
+            <span class="biblio-year">({{ pub.year }}).</span>
+            
+            <!-- Title -->
+            <h2 class="biblio-title">
+              <a href="/publications/{{ pub.id }}">"{{ pub.title }}"</a>
+            </h2>
+
+            <!-- Journal -->
+            <span class="biblio-journal"><em>{{ pub.journal }}</em>.</span>
+          </div>
+
+          <!-- Metadata & Outbound links -->
+          <div class="biblio-meta-row">
+            <div class="biblio-links">
+              {% if pub.doi %}
+                <a href="https://doi.org/{{ pub.doi }}" target="_blank" rel="noopener noreferrer" class="biblio-doi-link">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                  </svg>
+                  <span>doi:{{ pub.doi }}</span>
+                </a>
+              {% endif %}
+
+              {% if pub.link %}
+                <a href="{{ pub.link }}" target="_blank" rel="noopener noreferrer" class="biblio-external-link">
+                  <span>Publisher Source</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                </a>
+              {% endif %}
+
+              {% if pub.expedition %}
+                <a href="/expeditions/{{ pub.expedition.id }}" class="badge badge-navy">
+                  {{ pub.expedition.name }}
+                </a>
+              {% elif pub.expedition_id %}
+                <span class="badge badge-navy">Expedition #{{ pub.expedition_id }}</span>
+              {% endif %}
+            </div>
+
+            <div class="biblio-actions">
+              <button type="button" class="btn-cite-copy" 
+                      onclick="copyCitationText('{{ pub.authors|e }} ({{ pub.year }}). &ldquo;{{ pub.title|e }}&rdquo;. {{ pub.journal|e }}. {% if pub.doi %}https://doi.org/{{ pub.doi }}{% elif pub.link %}{{ pub.link }}{% endif %}', this)">
+                Cite
+              </button>
+              <a href="/publications/{{ pub.id }}" class="btn btn-outline btn-sm">
+                Abstract &amp; Details &rarr;
+              </a>
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom: 1rem;">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+      </svg>
+      <h3>No Publications Found</h3>
+      <p>No scientific papers matched your selection. Adjust your year or expedition filters.</p>
+      <a href="/publications" class="btn btn-outline">Reset Filter</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function copyCitationText(citation, buttonElement) {
+    // Replace HTML entities if necessary
+    const temp = document.createElement('textarea');
+    temp.innerHTML = citation;
+    const cleanText = temp.value;
+
+    navigator.clipboard.writeText(cleanText).then(() => {
+      const original = buttonElement.innerText;
+      buttonElement.innerText = 'Copied!';
+      buttonElement.style.borderColor = 'var(--accent-sage)';
+      buttonElement.style.color = 'var(--accent-sage)';
+      setTimeout(() => {
+        buttonElement.innerText = original;
+        buttonElement.style.borderColor = '';
+        buttonElement.style.color = '';
+      }, 1800);
+    });
+  }
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .bibliography-container {
+    margin-top: 1rem;
+  }
+
+  .biblio-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    counter-reset: biblio-counter;
+  }
+
+  .biblio-item {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 1.5rem 1.75rem;
+    position: relative;
+    transition: border-color 0.15s ease;
+  }
+
+  .biblio-item:hover {
+    border-color: var(--border-medium);
+  }
+
+  .biblio-citation-block {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    margin-bottom: 0.9rem;
+    color: var(--text-main);
+  }
+
+  .biblio-authors {
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.01em;
+  }
+
+  .biblio-year {
+    color: var(--text-secondary);
+    margin-left: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+  }
+
+  .biblio-title {
+    display: inline;
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0 0.35rem;
+  }
+
+  .biblio-title a {
+    color: var(--text-main);
+  }
+
+  .biblio-title a:hover {
+    color: var(--accent-ink);
+  }
+
+  .biblio-journal {
+    color: var(--text-secondary);
+    font-family: var(--font-serif);
+  }
+
+  .biblio-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+  }
+
+  .biblio-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .biblio-doi-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--accent-ink);
+    padding: 2px 6px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+  }
+
+  .biblio-doi-link:hover {
+    border-color: var(--accent-ink);
+  }
+
+  .biblio-external-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+  }
+
+  .biblio-external-link:hover {
+    color: var(--text-main);
+  }
+
+  .biblio-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-cite-copy {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-medium);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-cite-copy:hover {
+    border-color: var(--text-main);
+    color: var(--text-main);
+  }
+</style>
+{% endblock %}

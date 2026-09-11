@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}{{ activity.title }} — Activity &amp; News{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/">Home</a>
+  <span class="sep">/</span>
+  <a href="/activities">Activities &amp; News</a>
+  <span class="sep">/</span>
+  <span>Entry #{{ activity.id }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<article class="activity-detail-wrapper">
+  <!-- Article Header -->
+  <header class="activity-header">
+    <div class="activity-header-meta">
+      <div class="activity-type-pill">
+        {% if activity.activity_type == 'news' %}
+          <span class="badge badge-navy">News Dispatch</span>
+        {% elif activity.activity_type == 'event' %}
+          <span class="badge badge-rust">Public Event</span>
+        {% elif activity.activity_type == 'workshop' %}
+          <span class="badge badge-sage">Scientific Workshop</span>
+        {% else %}
+          <span class="badge">{{ activity.activity_type|upper }}</span>
+        {% endif %}
+      </div>
+
+      <time datetime="{{ activity.date }}" class="activity-date-string">
+        {{ activity.date.strftime('%A, %B %d, %Y') if activity.date.strftime is defined else activity.date }}
+      </time>
+    </div>
+
+    <h1 class="activity-headline">{{ activity.title }}</h1>
+  </header>
+
+  <!-- Content Grid -->
+  <div class="activity-grid">
+    <!-- Main Prose Area -->
+    <div class="activity-prose-col">
+      <div class="activity-full-description">
+        {% for para in activity.description.split('\n') %}
+          {% if para.strip() %}
+            <p>{{ para.strip() }}</p>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="activity-back-link">
+        <a href="/activities" class="btn btn-outline">
+          &larr; Back to Activities &amp; Announcements
+        </a>
+      </div>
+    </div>
+
+    <!-- Sidebar: Related Expeditions & Event Info -->
+    <aside class="activity-sidebar">
+      <!-- Related Expeditions Widget -->
+      <div class="sidebar-widget">
+        <div class="widget-kicker">Related Scientific Expeditions</div>
+        
+        {% if activity.related_expeditions %}
+          <div class="related-expeditions-list">
+            {% for exp in activity.related_expeditions %}
+              <div class="related-expedition-item">
+                <h4 class="rel-exp-name">
+                  <a href="/expeditions/{{ exp.id }}">{{ exp.name }}</a>
+                </h4>
+                <div class="rel-exp-region">{{ exp.region }}</div>
+                <div class="rel-exp-dates">
+                  {{ exp.start_date }} &ndash; {{ exp.end_date }}
+                </div>
+                <a href="/expeditions/{{ exp.id }}" class="rel-exp-link">
+                  View Expedition Records &rarr;
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        {% elif activity.related_expedition_ids and activity.related_expedition_ids|length > 0 %}
+          <div class="related-expeditions-list">
+            {% for eid in activity.related_expedition_ids %}
+              <div class="related-expedition-item">
+                <h4 class="rel-exp-name">
+                  <a href="/expeditions/{{ eid }}">Expedition #{{ eid }}</a>
+                </h4>
+                <a href="/expeditions/{{ eid }}" class="rel-exp-link">
+                  View Expedition Records &rarr;
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            This dispatch pertains to general institutional operations and is not bound to a single expedition.
+          </p>
+        {% endif %}
+      </div>
+
+      <!-- Activity Metadata Widget -->
+      <div class="sidebar-widget">
+        <div class="widget-kicker">Announcement Details</div>
+        <dl class="expedition-meta-list">
+          <div class="meta-row">
+            <dt>Category</dt>
+            <dd>{{ activity.activity_type|capitalize }}</dd>
+          </div>
+          <div class="meta-row">
+            <dt>Schedule Date</dt>
+            <dd>{{ activity.date }}</dd>
+          </div>
+          <div class="meta-row">
+            <dt>Record ID</dt>
+            <dd><code>ACT-{{ activity.id }}</code></dd>
+          </div>
+          {% if activity.created_at %}
+            <div class="meta-row">
+              <dt>Published</dt>
+              <dd>{{ activity.created_at.strftime('%Y-%m-%d') if activity.created_at.strftime is defined else activity.created_at }}</dd>
+            </div>
+          {% endif %}
+        </dl>
+      </div>
+    </aside>
+  </div>
+</article>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .activity-detail-wrapper {
+    max-width: var(--container-max);
+    margin: 0 auto;
+  }
+
+  .activity-header {
+    border-bottom: 2px solid var(--border-dark);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .activity-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .activity-date-string {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .activity-headline {
+    font-size: 2.3rem;
+    line-height: 1.25;
+    color: var(--text-main);
+  }
+
+  .activity-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 3rem;
+    align-items: start;
+  }
+
+  .activity-full-description {
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    line-height: 1.85;
+    color: var(--text-main);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 2.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .activity-full-description p {
+    color: var(--text-main);
+    margin-bottom: 1.25rem;
+  }
+
+  .activity-full-description p:last-child {
+    margin-bottom: 0;
+  }
+
+  .activity-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .related-expeditions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .related-expedition-item {
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 1rem;
+  }
+
+  .related-expedition-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .rel-exp-name {
+    font-size: 1.05rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .rel-exp-name a {
+    color: var(--text-main);
+  }
+
+  .rel-exp-name a:hover {
+    color: var(--accent-ink);
+  }
+
+  .rel-exp-region {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  .rel-exp-dates {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0.25rem 0 0.5rem;
+  }
+
+  .rel-exp-link {
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+    color: var(--accent-ink);
+  }
+
+  @media (max-width: 860px) {
+    .activity-grid {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+  }
+</style>
+{% endblock %}

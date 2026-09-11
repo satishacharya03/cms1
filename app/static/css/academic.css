@@ -1,0 +1,19 @@
+/* ==========================================================================
+   POLARIS ACADEMIC MINIMALISM STYLESHEET
+   Strict human-made minimalism. High contrast, precise layout, zero AI glow/neon.
+   ========================================================================== */
+
+:root {
+    --bg-canvas: #fafaf9;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f4f4f5;
+    --border-faint: #e5e7eb;
+    --border-strong: #18181b;
+    --border-medium: #cbd5e1;
+    --text-primary: #18181b;
+    --text-secondary: #52525b;
+    --text-muted: #71717a;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-serif: "Newsreader", "Charis SIL", Georgia, "Times New Roman", serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Monaco, monospace;
+}

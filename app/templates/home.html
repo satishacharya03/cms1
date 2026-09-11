@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% set active_page = 'home' %}
+
+{% block title %}MATRIXCMS — Field Expeditions, Open Datasets &amp; Scientific Outreach{% endblock %}
+
+{% block content %}
+<div class="home-page">
+
+  <!-- Hero Banner -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <div class="hero-badge">Department of Computer Science &amp; Engineering &bull; Chandigarh</div>
+      <h1 class="hero-title">Scientific Field Expeditions, Open Research Datasets &amp; Automated Archival</h1>
+      <p class="hero-lead">
+        A centralized academic portal bridging remote telemetry sensor deployments, multi-disciplinary environmental expeditions, open scientific datasets, and automated scholarly outreach. Operating under strict FAIR data stewardship and CC-BY-4.0 licensing.
+      </p>
+
+      <!-- Quick Search Bar -->
+      <div class="hero-search-wrapper">
+        <form action="/search" method="get" class="quick-search-form" role="search">
+          <label for="search-input" class="sr-only">Search MATRIXCMS Portal</label>
+          <div class="search-input-group">
+            <span class="search-prefix-label" style="display: flex; align-items: center; gap: 6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <span>Search Repository</span>
+            </span>
+            <input 
+              type="search" 
+              id="search-input" 
+              name="q" 
+              placeholder="Search by expedition name, variables (e.g., PM2.5, temp), author, or DOI..."
+              value="{{ search_query if search_query is defined else '' }}"
+              autocomplete="off"
+            >
+            <button type="submit" class="btn btn-primary">Search Catalog</button>
+          </div>
+        </form>
+        <div class="search-tags-hint">
+          <span class="hint-label">Suggested Queries:</span>
+          <a href="/search?q=Himalayan+Mesh" class="tag-hint">Himalayan Mesh</a>
+          <a href="/search?q=PM2.5" class="tag-hint">PM2.5 Sensor</a>
+          <a href="/search?q=Hydrology" class="tag-hint">Hydrology</a>
+          <a href="/search?q=Microclimate" class="tag-hint">Microclimate</a>
+          <a href="/search?q=CC-BY-4.0" class="tag-hint">CC-BY-4.0</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Portal Metrics Bar -->
+  <section class="metrics-bar" aria-label="Portal Metrics">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-value">
+          {% if metrics and metrics.active_expeditions is defined %}
+            {{ metrics.active_expeditions }}
+          {% elif expeditions is defined and expeditions %}
+            {{ expeditions|selectattr('status', 'equalto', 'ongoing')|list|length }}
+          {% else %}
+            4
+          {% endif %}
+        </div>
+        <div class="metric-label">Active Expeditions</div>
+        <div class="metric-sub">Field teams currently deployed</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-value">
+          {% if metrics and metrics.open_datasets is defined %}
+            {{ metrics.open_datasets }}
+          {% elif datasets is defined and datasets %}
+            {{ datasets|length }}
+          {% else %}
+            28
+          {% endif %}
+        </div>
+        <div class="metric-label">Open Datasets</div>
+        <div class="metric-sub">FAIR-compliant telemetry packages</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-value">
+          {% if metrics and metrics.published_reports is defined %}
+            {{ metrics.published_reports }}
+          {% elif reports is defined and reports %}
+            {{ reports|length }}
+          {% else %}
+            42
+          {% endif %}
+        </div>
+        <div class="metric-label">Published Reports</div>
+        <div class="metric-sub">Technical field monographs</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-value">
+          {% if metrics and metrics.peer_reviewed_papers is defined %}
+            {{ metrics.peer_reviewed_papers }}
+          {% elif publications is defined and publications %}
+            {{ publications|length }}
+          {% else %}
+            16
+          {% endif %}
+        </div>
+        <div class="metric-label">Peer-Reviewed Papers</div>
+        <div class="metric-sub">Journal &amp; conference proceedings</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 1: Featured & Recent Expeditions -->
+  <section class="portal-section">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Featured &amp; Recent Expeditions</h2>
+        <p class="section-subtitle">Longitudinal computational field campaigns and empirical sensor deployments.</p>
+      </div>
+      <a href="/expeditions" class="section-more-link">View All Expeditions &rarr;</a>
+    </div>
+
+    <div class="expedition-grid">
+      {% if expeditions is defined and expeditions %}
+        {% for exp in expeditions[:6] %}
+          <article class="expedition-card">
+            <div class="card-top">
+              <span class="status-pill status-{{ exp.status|lower }}">{{ exp.status|upper }}</span>
+              <span class="region-tag">{{ exp.region }}</span>
+            </div>
+            <h3 class="card-title">
+              <a href="/expeditions/{{ exp.id }}">{{ exp.name }}</a>
+            </h3>
+            <p class="card-summary">{{ exp.objectives|truncate(150, True, '...') }}</p>
+            <div class="card-meta">
+              <div class="meta-row">
+                <span class="meta-key">Dates:</span>
+                <span class="meta-val">{{ exp.start_date }} to {{ exp.end_date }}</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-key">Lead:</span>
+                <span class="meta-val">{{ exp.team_leader }}</span>
+              </div>
+            </div>
+            <div class="card-footer">
+              <a href="/expeditions/{{ exp.id }}" class="card-action-link">Expedition Dossier &rarr;</a>
+            </div>
+          </article>
+        {% endfor %}
+      {% else %}
+        <!-- Default Curated Showcase Expeditions -->
+        <article class="expedition-card">
+          <div class="card-top">
+            <span class="status-pill status-ongoing">ONGOING</span>
+            <span class="region-tag">Northwest Himalayas (3,200m)</span>
+          </div>
+          <h3 class="card-title">
+            <a href="/expeditions">Himalayan Microclimate &amp; Permafrost Sensor Mesh</a>
+          </h3>
+          <p class="card-summary">
+            Continuous acoustic and thermal probing across high-altitude permafrost slopes to study freeze-thaw soil mechanics and microclimate fluctuations.
+          </p>
+          <div class="card-meta">
+            <div class="meta-row">
+              <span class="meta-key">Dates:</span>
+              <span class="meta-val">2026-04-10 to 2026-11-20</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Lead:</span>
+              <span class="meta-val">Prof. A. Sharma (Chandigarh CSE)</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <a href="/expeditions" class="card-action-link">Expedition Dossier &rarr;</a>
+          </div>
+        </article>
+
+        <article class="expedition-card">
+          <div class="card-top">
+            <span class="status-pill status-ongoing">ONGOING</span>
+            <span class="region-tag">Shivalik Foothills Basin</span>
+          </div>
+          <h3 class="card-title">
+            <a href="/expeditions">Riverine Hydrology &amp; Runoff Sensor Network</a>
+          </h3>
+          <p class="card-summary">
+            Autonomous LoRaWAN river discharge nodes monitoring seasonal precipitation runoff, sediment loads, and localized water table dynamics.
+          </p>
+          <div class="card-meta">
+            <div class="meta-row">
+              <span class="meta-key">Dates:</span>
+              <span class="meta-val">2026-03-01 to 2026-09-30</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Lead:</span>
+              <span class="meta-val">Dr. R. K. Verma</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <a href="/expeditions" class="card-action-link">Expedition Dossier &rarr;</a>
+          </div>
+        </article>
+
+        <article class="expedition-card">
+          <div class="card-top">
+            <span class="status-pill status-completed">COMPLETED</span>
+            <span class="region-tag">Indo-Gangetic Plain</span>
+          </div>
+          <h3 class="card-title">
+            <a href="/expeditions">Urban-Rural Boundary Atmospheric Aerosol Transect</a>
+          </h3>
+          <p class="card-summary">
+            Mobile optical particle spectrometry surveying fine particulate matter (PM1.0, PM2.5, PM10) dispersal gradients across agricultural burn corridors.
+          </p>
+          <div class="card-meta">
+            <div class="meta-row">
+              <span class="meta-key">Dates:</span>
+              <span class="meta-val">2025-10-15 to 2026-01-30</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Lead:</span>
+              <span class="meta-val">Dr. S. Kaur (Environmental Informatics)</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <a href="/expeditions" class="card-action-link">Expedition Dossier &rarr;</a>
+          </div>
+        </article>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Section 2: Latest Scientific Datasets -->
+  <section class="portal-section">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Latest Scientific Datasets</h2>
+        <p class="section-subtitle">Calibrated, machine-readable telemetry packages published with persistent identifiers.</p>
+      </div>
+      <a href="/datasets" class="section-more-link">Browse Full Data Catalog &rarr;</a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="academic-table">
+        <thead>
+          <tr>
+            <th scope="col" style="width: 32%;">Dataset Title &amp; Identifiers</th>
+            <th scope="col" style="width: 28%;">Measured Variables &amp; Units</th>
+            <th scope="col" style="width: 22%;">Temporal &amp; Spatial Coverage</th>
+            <th scope="col" style="width: 10%;">License</th>
+            <th scope="col" style="width: 8%; text-align: right;">Access</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if datasets is defined and datasets %}
+            {% for ds in datasets[:6] %}
+              <tr>
+                <td>
+                  <a href="/datasets/{{ ds.id }}" class="table-entity-title">{{ ds.title }}</a>
+                  <div class="table-submeta">
+                    {% if ds.expedition is defined and ds.expedition %}
+                      <span class="expedition-ref">Expedition: {{ ds.expedition.name }}</span>
+                    {% endif %}
+                    {% if ds.doi %}
+                      <span class="doi-pill">DOI: {{ ds.doi }}</span>
+                    {% endif %}
+                  </div>
+                </td>
+                <td>
+                  <div class="var-list">
+                    <span class="var-tag">{{ ds.variables }}</span>
+                  </div>
+                  <div class="unit-note">Units: <code>{{ ds.units }}</code></div>
+                </td>
+                <td>
+                  <div>{{ ds.temporal_coverage }}</div>
+                  <div class="spatial-note">{{ ds.spatial_coverage }}</div>
+                </td>
+                <td>
+                  <span class="license-badge">{{ ds.license or 'CC-BY-4.0' }}</span>
+                </td>
+                <td style="text-align: right;">
+                  <a href="/api/datasets/{{ ds.id }}/download" class="btn btn-sm btn-outline" download>Download</a>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <!-- Curated Showcase Datasets -->
+            <tr>
+              <td>
+                <a href="/datasets" class="table-entity-title">High-Altitude Himalayan Sub-Surface Soil Temperature &amp; Moisture Profiles</a>
+                <div class="table-submeta">
+                  <span class="expedition-ref">Expedition: Himalayan Microclimate &amp; Permafrost Sensor Mesh</span>
+                  <span class="doi-pill">DOI: 10.5281/zenodo.chandigarh.2026.0142</span>
+                </div>
+              </td>
+              <td>
+                <div class="var-list">
+                  <span class="var-tag">Soil_Temp_C</span>
+                  <span class="var-tag">Volumetric_Water_Content</span>
+                  <span class="var-tag">Dielectric_Permittivity</span>
+                </div>
+                <div class="unit-note">Units: <code>&deg;C, m&sup3;/m&sup3;, dimensionless</code></div>
+              </td>
+              <td>
+                <div>2026-04-15 to 2026-06-30</div>
+                <div class="spatial-note">32.2432&deg; N, 77.1892&deg; E (Alt: 3,240m)</div>
+              </td>
+              <td>
+                <span class="license-badge">CC-BY-4.0</span>
+              </td>
+              <td style="text-align: right;">
+                <a href="/datasets" class="btn btn-sm btn-outline">Download</a>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <a href="/datasets" class="table-entity-title">Shivalik Watershed Hourly Stage Height &amp; Acoustic Stream Velocity</a>
+                <div class="table-submeta">
+                  <span class="expedition-ref">Expedition: Riverine Hydrology Sensor Network</span>
+                  <span class="doi-pill">DOI: 10.5281/zenodo.chandigarh.2026.0189</span>
+                </div>
+              </td>
+              <td>
+                <div class="var-list">
+                  <span class="var-tag">Stream_Stage_m</span>
+                  <span class="var-tag">Mean_Velocity_ms</span>
+                  <span class="var-tag">Water_Temp_C</span>
+                </div>
+                <div class="unit-note">Units: <code>meters, m/s, &deg;C</code></div>
+              </td>
+              <td>
+                <div>2026-03-01 to 2026-05-31</div>
+                <div class="spatial-note">Ghaggar-Sisna Sub-basin Network</div>
+              </td>
+              <td>
+                <span class="license-badge">CC-BY-4.0</span>
+              </td>
+              <td style="text-align: right;">
+                <a href="/datasets" class="btn btn-sm btn-outline">Download</a>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <a href="/datasets" class="table-entity-title">Multimodal Particulate Mass Concentrations and Meteorological Transects</a>
+                <div class="table-submeta">
+                  <span class="expedition-ref">Expedition: Atmospheric Aerosol Transect</span>
+                  <span class="doi-pill">DOI: 10.5281/zenodo.chandigarh.2026.0091</span>
+                </div>
+              </td>
+              <td>
+                <div class="var-list">
+                  <span class="var-tag">PM1.0</span>
+                  <span class="var-tag">PM2.5</span>
+                  <span class="var-tag">PM10</span>
+                  <span class="var-tag">RH_%</span>
+                </div>
+                <div class="unit-note">Units: <code>&micro;g/m&sup3;, % Relative Humidity</code></div>
+              </td>
+              <td>
+                <div>2025-10-15 to 2026-01-30</div>
+                <div class="spatial-note">30.7333&deg; N, 76.7794&deg; E to Rural Transect</div>
+              </td>
+              <td>
+                <span class="license-badge">CC-BY-4.0</span>
+              </td>
+              <td style="text-align: right;">
+                <a href="/datasets" class="btn btn-sm btn-outline">Download</a>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section 3: Recent Activities & Outreach Summaries -->
+  <section class="portal-section">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Recent Activities &amp; Outreach Summaries</h2>
+        <p class="section-subtitle">Scholarly dispatches, technical seminars, and LLM-assisted public science translations.</p>
+      </div>
+      <a href="/activities" class="section-more-link">View All Activities &rarr;</a>
+    </div>
+
+    <div class="activities-grid">
+      {% if activities is defined and activities %}
+        {% for act in activities[:4] %}
+          <article class="activity-card">
+            <div class="activity-meta">
+              <span class="activity-type-pill activity-{{ act.activity_type|lower }}">{{ act.activity_type|upper }}</span>
+              <time class="activity-date">{{ act.date }}</time>
+            </div>
+            <h3 class="activity-title">{{ act.title }}</h3>
+            <p class="activity-desc">{{ act.description }}</p>
+          </article>
+        {% endfor %}
+      {% else %}
+        <!-- Showcase Activities -->
+        <article class="activity-card">
+          <div class="activity-meta">
+            <span class="activity-type-pill activity-workshop">WORKSHOP</span>
+            <time class="activity-date">2026-05-18</time>
+          </div>
+          <h3 class="activity-title">Field Instrumentation &amp; Edge Sensing Bootcamp</h3>
+          <p class="activity-desc">
+            Hands-on technical workshop hosted by Chandigarh CSE covering ultra-low-power micro-controllers, LoRaWAN mesh configuration, and battery calibration for sub-zero deployments.
+          </p>
+        </article>
+
+        <article class="activity-card">
+          <div class="activity-meta">
+            <span class="activity-type-pill activity-news">NEWS</span>
+            <time class="activity-date">2026-04-12</time>
+          </div>
+          <h3 class="activity-title">Deployment Phase III Commenced in Northwest Himalayas</h3>
+          <p class="activity-desc">
+            The Himalayan expedition team successfully installed four automated acoustic soil sounding nodes across the Rohtang crest, initiating live telemetry ingestion.
+          </p>
+        </article>
+
+        <article class="activity-card">
+          <div class="activity-meta">
+            <span class="activity-type-pill activity-event">EVENT</span>
+            <time class="activity-date">2026-03-25</time>
+          </div>
+          <h3 class="activity-title">Symposium on Open Science &amp; Longitudinal Telemetry Archiving</h3>
+          <p class="activity-desc">
+            Faculty colloquium introducing FAIR data pipelines, DOI registration workflows, and automated LLM-assisted scientific outreach synthesis for regional environmental data.
+          </p>
+        </article>
+
+        <article class="activity-card">
+          <div class="activity-meta">
+            <span class="activity-type-pill activity-dispatch">OUTREACH SUMMARY</span>
+            <time class="activity-date">2026-02-10</time>
+          </div>
+          <h3 class="activity-title">Executive Summary: Winter Aerosol Inversion Patterns</h3>
+          <p class="activity-desc">
+            Automated scholarly synthesis derived from Report TR-2026-02: Analysis of boundary-layer trapping and nocturnal thermal inversion dynamics over the northern plains corridor.
+          </p>
+        </article>
+      {% endif %}
+    </div>
+  </section>
+
+</div>
+{% endblock %}

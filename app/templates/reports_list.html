@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}Technical & Expedition Reports{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/">Home</a>
+  <span class="sep">/</span>
+  <span>Technical Reports</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="page-header-content">
+    <div class="page-kicker">Field Documentation &amp; Research Series</div>
+    <h1>Technical &amp; Expedition Reports</h1>
+    <p class="page-description">
+      Formal technical reports, cruise summaries, and scientific expedition records documenting methodologies, field operations, and preliminary findings.
+    </p>
+  </div>
+  <div>
+    <span class="badge badge-navy">{{ reports|length if reports is defined else 0 }} Documents Cataloged</span>
+  </div>
+</section>
+
+<!-- Filter Panel -->
+<section class="filter-panel">
+  <form method="get" action="/reports" class="filter-form">
+    <div class="filter-group" style="flex: 2 1 240px;">
+      <label class="filter-label" for="filter-keywords">Keyword or Title</label>
+      <input type="text" id="filter-keywords" name="keywords" class="form-input" 
+             placeholder="Search title, abstract, or keywords..." 
+             value="{{ selected_keywords or request.query_params.get('keywords', '') if request is defined else (selected_keywords or '') }}">
+    </div>
+
+    <div class="filter-group" style="flex: 1 1 200px;">
+      <label class="filter-label" for="filter-expedition">Expedition</label>
+      <select id="filter-expedition" name="expedition_id" class="form-select">
+        <option value="">All Expeditions</option>
+        {% if expeditions is defined %}
+          {% for exp in expeditions %}
+            <option value="{{ exp.id }}" {% if selected_expedition_id|string == exp.id|string or (request is defined and request.query_params.get('expedition_id') == exp.id|string) %}selected{% endif %}>
+              {{ exp.name }} ({{ exp.region }})
+            </option>
+          {% endfor %}
+        {% endif %}
+      </select>
+    </div>
+
+    <div class="filter-group" style="flex: 0 1 140px;">
+      <label class="filter-label" for="filter-year">Year</label>
+      <input type="number" id="filter-year" name="year" class="form-input" min="1950" max="2100" placeholder="e.g. 2026"
+             value="{{ selected_year or request.query_params.get('year', '') if request is defined else (selected_year or '') }}">
+    </div>
+
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+        Filter
+      </button>
+      <a href="/reports" class="btn btn-outline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        Reset
+      </a>
+    </div>
+  </form>
+</section>
+
+<!-- Reports List -->
+<section class="reports-stream">
+  {% if reports and reports|length > 0 %}
+    <div class="report-items">
+      {% for report in reports %}
+        <article class="report-card">
+          <div class="report-meta-header">
+            <div class="report-tags">
+              {% if report.expedition %}
+                <a href="/expeditions/{{ report.expedition.id }}" class="badge badge-navy">
+                  {{ report.expedition.name }}
+                </a>
+              {% elif report.expedition_id %}
+                <span class="badge badge-navy">Expedition #{{ report.expedition_id }}</span>
+              {% endif %}
+
+              {% if report.created_at %}
+                <span class="report-date">
+                  {{ report.created_at.strftime('%B %d, %Y') if report.created_at.strftime is defined else report.created_at }}
+                </span>
+              {% endif %}
+            </div>
+
+            <div class="report-identifiers">
+              {% if report.doi %}
+                <a href="https://doi.org/{{ report.doi }}" target="_blank" rel="noopener noreferrer" class="badge">
+                  DOI: {{ report.doi }}
+                </a>
+              {% endif %}
+              <span class="badge badge-license">{{ report.license or 'CC-BY-4.0' }}</span>
+            </div>
+          </div>
+
+          <h2 class="report-title">
+            <a href="/reports/{{ report.id }}">{{ report.title }}</a>
+          </h2>
+
+          <div class="report-authors">
+            <strong>Authors:</strong> {{ report.authors }}
+          </div>
+
+          {% if report.abstract %}
+            <p class="report-abstract">
+              {{ report.abstract[:320] }}{% if report.abstract|length > 320 %}…{% endif %}
+            </p>
+          {% endif %}
+
+          {% if report.keywords %}
+            <div class="report-keywords">
+              <span class="keywords-label">Keywords:</span>
+              {% for kw in report.keywords.split(',') %}
+                <span class="keyword-pill">{{ kw.strip() }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <div class="report-footer">
+            <div class="file-type-info">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              <span>
+                {% if report.file_path and report.file_path.lower().endswith('.pdf') %}
+                  PDF Document
+                {% elif report.file_path and (report.file_path.lower().endswith('.docx') or report.file_path.lower().endswith('.doc')) %}
+                  DOCX Document
+                {% else %}
+                  Archival Document
+                {% endif %}
+              </span>
+            </div>
+
+            <div class="action-buttons">
+              <a href="/reports/{{ report.id }}" class="btn btn-outline btn-sm">
+                View Details
+              </a>
+              <a href="/api/reports/{{ report.id }}/download" class="btn btn-download btn-sm" download>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download
+              </a>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom: 1rem;">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="12" y1="18" x2="12" y2="12"></line>
+        <line x1="9" y1="15" x2="15" y2="15"></line>
+      </svg>
+      <h3>No Technical Reports Found</h3>
+      <p>No reports match your current filter parameters. Try broadening your keywords or clearing the expedition filter.</p>
+      <a href="/reports" class="btn btn-outline">Clear All Filters</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .reports-stream {
+    margin-top: 1rem;
+  }
+
+  .report-items {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .report-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 1.75rem 2rem;
+    transition: border-color 0.15s ease;
+  }
+
+  .report-card:hover {
+    border-color: var(--border-medium);
+  }
+
+  .report-meta-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .report-tags {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .report-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .report-identifiers {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .report-title {
+    font-size: 1.45rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+
+  .report-title a {
+    color: var(--text-main);
+  }
+
+  .report-title a:hover {
+    color: var(--accent-ink);
+  }
+
+  .report-authors {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.85rem;
+  }
+
+  .report-authors strong {
+    color: var(--text-main);
+    font-weight: 600;
+  }
+
+  .report-abstract {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    margin-bottom: 1.25rem;
+  }
+
+  .report-keywords {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.8rem;
+  }
+
+  .keywords-label {
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    margin-right: 0.25rem;
+  }
+
+  .keyword-pill {
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    border: 1px solid var(--border-subtle);
+  }
+
+  .report-footer {
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .file-type-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+</style>
+{% endblock %}

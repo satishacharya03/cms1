@@ -1,0 +1,399 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Draft #{{ item.id if item is defined else (draft.id if draft is defined else '') }} &mdash; Review{% endblock %}
+{% set active_page = "generated_content" %}
+
+{# Resolve Active Draft Record Defensively #}
+{% set d = item if item is defined else (draft if draft is defined else (content_item if content_item is defined else content)) %}
+
+{# Resolve Source Record Details #}
+{% set src = source_record if source_record is defined else (source if source is defined else (d.source if d is defined and d.source is defined else None)) %}
+{% set src_title = src.title if src and src.title is defined else (d.source_title if d is defined and d.source_title is defined else (d.source_type|capitalize ~ ' #' ~ d.source_id if d is defined else 'Scientific Output')) %}
+{% set src_abstract = src.abstract if src and src.abstract is defined else (src.description if src and src.description is defined else (d.source_abstract if d is defined and d.source_abstract is defined else '')) %}
+{% set src_link = src.link if src and src.link is defined else (d.source_link if d is defined and d.source_link is defined else ('/reports/' ~ d.source_id if d is defined and d.source_type == 'report' else ('/datasets/' ~ d.source_id if d is defined and d.source_type == 'dataset' else '/activities/' ~ d.source_id if d is defined else '#'))) %}
+{% set platform_code = d.platform|lower if d is defined and d.platform is defined else 'web_summary' %}
+
+{% block breadcrumbs %}
+  <span class="breadcrumb-separator">/</span>
+  <a href="/admin/generated-content">AI Outreach Drafts</a>
+  <span class="breadcrumb-separator">/</span>
+  <span class="breadcrumb-current">Draft #{{ d.id if d is defined else '' }}</span>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+      <h1 class="page-title">Outreach Draft #{{ d.id }}</h1>
+      
+      <!-- Platform Badge -->
+      {% if platform_code == 'tweet' %}
+        <span class="pill pill-platform-tweet">Twitter (X)</span>
+      {% elif platform_code == 'linkedin' %}
+        <span class="pill pill-platform-linkedin">LinkedIn</span>
+      {% elif platform_code == 'instagram' %}
+        <span class="pill pill-platform-instagram">Instagram</span>
+      {% else %}
+        <span class="pill pill-platform-web">Web Summary</span>
+      {% endif %}
+
+      <!-- Status Pill -->
+      {% set cur_st = d.status|lower if d is defined and d.status is defined else 'pending_review' %}
+      {% if cur_st == 'approved' %}
+        <span class="pill pill-approved">&bull; Approved</span>
+      {% elif cur_st == 'rejected' %}
+        <span class="pill pill-rejected">&bull; Rejected</span>
+      {% else %}
+        <span class="pill pill-pending">&bull; Pending Review</span>
+      {% endif %}
+    </div>
+
+    <p class="page-description">
+      Generated outreach content for {{ d.source_type|capitalize }} &bull; Source ID #{{ d.source_id }}
+    </p>
+  </div>
+
+  <div class="page-actions">
+    <a href="/admin/generated-content" class="btn btn-outline">
+      &larr; Back to Drafts
+    </a>
+  </div>
+</div>
+
+<!-- Two-Column Grid: Left Editor & Actions | Right Source Metadata -->
+<div class="detail-grid">
+
+  <!-- LEFT COLUMN: Content Editor, Constraint Indicators, Action Buttons -->
+  <div style="display: flex; flex-direction: column; gap: 20px;">
+
+    <!-- Editor Card -->
+    <div class="admin-card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          <span>Draft Content Editor</span>
+        </div>
+        <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">
+          Target: {{ platform_code|replace('_', ' ')|upper }}
+        </span>
+      </div>
+
+      <div class="card-body">
+        <!-- Form 1: Save Changes -->
+        <form id="update-content-form" action="/admin/generated-content/{{ d.id }}/update" method="POST">
+          <label for="draft-content" style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">
+            Content Text (Edit prior to publication or approval)
+          </label>
+          <textarea
+            id="draft-content"
+            name="content"
+            class="editor-textarea"
+            rows="10"
+            required
+            aria-label="Editable generated content"
+          >{{ d.content }}</textarea>
+
+          <!-- Primary Save Action directly under editor -->
+          <div style="margin-top: 14px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 12px; color: var(--text-muted);">
+              Press &ldquo;Save Changes&rdquo; to persist modifications to this draft.
+            </div>
+            <button type="submit" class="btn btn-secondary">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+              Save Changes
+            </button>
+          </div>
+        </form>
+
+        <!-- Platform Constraint & Metrics Box -->
+        <div class="constraint-card" id="constraint-box" data-platform="{{ platform_code }}">
+          <div class="constraint-header">
+            <span class="constraint-title" id="constraint-title-label">Platform Constraints</span>
+            <span class="constraint-stat" id="counter-stat">0 chars</span>
+          </div>
+
+          <!-- Progress Bar for constrained platforms -->
+          <div class="constraint-bar-wrap" id="constraint-bar-container" style="display: none;">
+            <div class="constraint-bar" id="constraint-bar"></div>
+          </div>
+
+          <!-- Constraint Details & Live Stats -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-top: 4px;">
+            <div class="constraint-note" id="constraint-guidance">
+              <!-- Dynamically populated per platform -->
+            </div>
+            <div style="display: flex; gap: 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); white-space: nowrap;">
+              <span id="stat-words">0 words</span>
+              <span id="stat-sentences">0 sentences</span>
+              <span id="stat-hashtags" style="display: none;">0 tags</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Control Buttons Bar -->
+        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          
+          <!-- Back Link -->
+          <a href="/admin/generated-content" class="btn btn-outline">
+            &larr; Back to Drafts
+          </a>
+
+          <!-- Decision Action Buttons -->
+          <div style="display: flex; align-items: center; gap: 10px;">
+            
+            <!-- Form 2: Reject Draft (POST /admin/generated-content/{id}/reject) -->
+            <form id="reject-form" action="/admin/generated-content/{{ d.id }}/reject" method="POST" style="margin: 0;">
+              <button
+                type="submit"
+                class="btn btn-reject"
+                onclick="return confirm('Confirm rejecting this draft? It will be archived as rejected.');"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                Reject Draft
+              </button>
+            </form>
+
+            <!-- Form 3: Approve Draft (POST /admin/generated-content/{id}/approve) -->
+            <form id="approve-form" action="/admin/generated-content/{{ d.id }}/approve" method="POST" style="margin: 0;">
+              <!-- Hidden input syncs edited text so approving preserves edits if server supports it -->
+              <input type="hidden" name="content" id="approve-content-payload" value="{{ d.content }}">
+              <button type="submit" class="btn btn-approve">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Approve Draft
+              </button>
+            </form>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN: Source Context Metadata & Record Link -->
+  <div style="display: flex; flex-direction: column; gap: 20px;">
+
+    <!-- Source Record Context Card -->
+    <div class="admin-card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span>Source Record Context</span>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="metadata-list">
+          
+          <div class="metadata-item">
+            <span class="metadata-label">Source Type &amp; ID</span>
+            <span class="metadata-val" style="display: flex; align-items: center; gap: 6px;">
+              <span class="pill pill-type">{{ d.source_type|upper }}</span>
+              <span class="mono">#{{ d.source_id }}</span>
+            </span>
+          </div>
+
+          <div class="metadata-item">
+            <span class="metadata-label">Source Title</span>
+            <div class="metadata-val" style="font-weight: 600; color: var(--text-primary);">
+              {{ src_title }}
+            </div>
+          </div>
+
+          {% if src and src.authors is defined and src.authors %}
+            <div class="metadata-item">
+              <span class="metadata-label">Authors / Investigators</span>
+              <div class="metadata-val" style="color: var(--text-secondary);">
+                {{ src.authors }}
+              </div>
+            </div>
+          {% endif %}
+
+          {% if src and src.expedition is defined and src.expedition %}
+            <div class="metadata-item">
+              <span class="metadata-label">Associated Expedition</span>
+              <div class="metadata-val">
+                {{ src.expedition.name }}
+              </div>
+            </div>
+          {% endif %}
+
+          {% if src and src.doi is defined and src.doi %}
+            <div class="metadata-item">
+              <span class="metadata-label">Digital Object Identifier (DOI)</span>
+              <span class="metadata-val mono" style="color: var(--brand-navy);">
+                {{ src.doi }}
+              </span>
+            </div>
+          {% endif %}
+
+          <div class="metadata-item">
+            <span class="metadata-label">Abstract / Summary Context</span>
+            <div class="metadata-val" style="background-color: var(--bg-surface-subtle); border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; font-size: 12px; max-height: 180px; overflow-y: auto; color: var(--text-secondary); line-height: 1.5;">
+              {% if src_abstract %}
+                {{ src_abstract }}
+              {% else %}
+                <span style="color: var(--text-muted); font-style: italic;">No abstract text provided in source record.</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div style="margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+            <a href="{{ src_link }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary" style="width: 100%; justify-content: center;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              View Original Source Record
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Audit Metadata Card -->
+    <div class="admin-card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span>Audit Log</span>
+        </div>
+      </div>
+      <div class="card-body" style="font-size: 12px;">
+        <div class="metadata-list">
+          <div class="metadata-item">
+            <span class="metadata-label">Generated Timestamp</span>
+            <span class="metadata-val mono">
+              {{ d.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') if d.created_at and d.created_at.strftime is defined else (d.created_at if d.created_at is defined else '&mdash;'|safe) }}
+            </span>
+          </div>
+
+          <div class="metadata-item">
+            <span class="metadata-label">Last Updated</span>
+            <span class="metadata-val mono">
+              {{ d.updated_at.strftime('%Y-%m-%d %H:%M:%S UTC') if d.updated_at and d.updated_at.strftime is defined else (d.updated_at if d.updated_at is defined else '&mdash;'|safe) }}
+            </span>
+          </div>
+
+          <div class="metadata-item">
+            <span class="metadata-label">Current State</span>
+            <span class="metadata-val" style="font-weight: 600;">
+              {{ d.status|replace('_', ' ')|upper }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function() {
+    // Client-side Live Character Count and Platform Constraint Engine
+    const textarea = document.getElementById('draft-content');
+    const approvePayload = document.getElementById('approve-content-payload');
+    const constraintBox = document.getElementById('constraint-box');
+    const platform = constraintBox.getAttribute('data-platform') || 'web_summary';
+    
+    const counterStat = document.getElementById('counter-stat');
+    const barContainer = document.getElementById('constraint-bar-container');
+    const bar = document.getElementById('constraint-bar');
+    const guidance = document.getElementById('constraint-guidance');
+    const statWords = document.getElementById('stat-words');
+    const statSentences = document.getElementById('stat-sentences');
+    const statHashtags = document.getElementById('stat-hashtags');
+
+    function updateMetrics() {
+      const text = textarea.value || '';
+      const charCount = text.length;
+
+      // Sync payload to approve form hidden input
+      if (approvePayload) {
+        approvePayload.value = text;
+      }
+
+      // Word count
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      statWords.textContent = words + (words === 1 ? ' word' : ' words');
+
+      // Sentence count (approximate by punctuation)
+      const sentences = text.trim() ? (text.match(/[^.!?]+[.!?]+(\s|$)/g) || [text]).length : 0;
+      statSentences.textContent = sentences + (sentences === 1 ? ' sentence' : ' sentences');
+
+      // Hashtag count
+      const hashtags = (text.match(/#\w+/g) || []).length;
+      if (platform === 'instagram' || platform === 'tweet') {
+        statHashtags.style.display = 'inline';
+        statHashtags.textContent = hashtags + (hashtags === 1 ? ' hashtag' : ' hashtags');
+      } else {
+        statHashtags.style.display = 'none';
+      }
+
+      // Platform-specific constraint rules
+      if (platform === 'tweet') {
+        barContainer.style.display = 'block';
+        const limit = 280;
+        const remaining = limit - charCount;
+        const pct = Math.min(100, Math.round((charCount / limit) * 100));
+        bar.style.width = pct + '%';
+
+        if (charCount > limit) {
+          bar.className = 'constraint-bar danger';
+          counterStat.style.color = 'var(--status-rejected-text)';
+          counterStat.textContent = charCount + ' / ' + limit + ' (' + Math.abs(remaining) + ' over limit)';
+          guidance.innerHTML = '<span style="color: var(--status-rejected-text); font-weight:600;">Exceeds Twitter (X) 280-character limit!</span> Trim content to allow publishing.';
+        } else if (charCount >= 240) {
+          bar.className = 'constraint-bar warning';
+          counterStat.style.color = '#b45309';
+          counterStat.textContent = charCount + ' / ' + limit + ' (' + remaining + ' left)';
+          guidance.textContent = 'Approaching character limit. Ensure link & key keywords fit.';
+        } else {
+          bar.className = 'constraint-bar';
+          counterStat.style.color = 'var(--text-primary)';
+          counterStat.textContent = charCount + ' / ' + limit + ' (' + remaining + ' left)';
+          guidance.textContent = 'Constraint: Must be <= 280 characters with link & open science tags.';
+        }
+      } else if (platform === 'linkedin') {
+        barContainer.style.display = 'none';
+        counterStat.textContent = charCount + ' chars';
+        
+        let note = 'Constraint: Optimal professional engagement is 3&ndash;4 concise sentences (600&ndash;1,200 characters).';
+        if (sentences < 2) {
+          note += ' <span style="color: #b45309;">Draft may be too brief for LinkedIn context.</span>';
+        } else if (sentences > 6) {
+          note += ' <span style="color: #b45309;">Consider tightening to 3&ndash;4 impactful sentences.</span>';
+        }
+        guidance.innerHTML = note;
+      } else if (platform === 'instagram') {
+        barContainer.style.display = 'block';
+        const limit = 2200;
+        const pct = Math.min(100, Math.round((charCount / limit) * 100));
+        bar.style.width = pct + '%';
+        bar.className = charCount > limit ? 'constraint-bar danger' : 'constraint-bar';
+        
+        counterStat.textContent = charCount + ' / ' + limit + ' chars';
+        let note = 'Constraint: Max 2,200 chars. Opening 125 chars appear before the &ldquo;more&rdquo; cutoff. Recommended 3&ndash;5 hashtags.';
+        if (hashtags < 2) {
+          note += ' <span style="color: #b45309;">Add 2&ndash;3 field-specific hashtags.</span>';
+        }
+        guidance.innerHTML = note;
+      } else {
+        // web_summary
+        barContainer.style.display = 'none';
+        counterStat.textContent = charCount + ' chars (' + words + ' words)';
+        guidance.textContent = 'Constraint: Comprehensive 1&ndash;3 paragraph overview for researcher catalog & public summary.';
+      }
+    }
+
+    // Attach real-time input listener
+    textarea.addEventListener('input', updateMetrics);
+    // Initial evaluation on load
+    updateMetrics();
+  })();
+</script>
+{% endblock %}

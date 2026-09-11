@@ -1,0 +1,281 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% set active_page = "dashboard" %}
+
+{% block breadcrumbs %}
+  <span class="breadcrumb-separator">/</span>
+  <span class="breadcrumb-current">Dashboard</span>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Operational Overview</h1>
+    <p class="page-description">Real-time repository statistics, system records, and AI outreach curation queue.</p>
+  </div>
+  <div class="page-actions">
+    <span class="brand-badge">Auto-Refresh Ready</span>
+  </div>
+</div>
+
+{# Resolve Metric Values Defensively #}
+{% set val_exp = total_expeditions if total_expeditions is defined else (metrics.expeditions if metrics and metrics.expeditions is defined else (metrics.total_expeditions if metrics and metrics.total_expeditions is defined else 0)) %}
+{% set val_rep = total_reports if total_reports is defined else (metrics.reports if metrics and metrics.reports is defined else (metrics.total_reports if metrics and metrics.total_reports is defined else 0)) %}
+{% set val_dat = total_datasets if total_datasets is defined else (metrics.datasets if metrics and metrics.datasets is defined else (metrics.total_datasets if metrics and metrics.total_datasets is defined else 0)) %}
+{% set val_pub = total_publications if total_publications is defined else (metrics.publications if metrics and metrics.publications is defined else (metrics.total_publications if metrics and metrics.total_publications is defined else 0)) %}
+{% set val_med = total_media if total_media is defined else (metrics.media if metrics and metrics.media is defined else (metrics.total_media if metrics and metrics.total_media is defined else (metrics.total_media_assets if metrics and metrics.total_media_assets is defined else 0))) %}
+{% set val_act = total_activities if total_activities is defined else (metrics.activities if metrics and metrics.activities is defined else (metrics.total_activities if metrics and metrics.total_activities is defined else 0)) %}
+{% set val_pen = total_pending_drafts if total_pending_drafts is defined else (pending_drafts_count if pending_drafts_count is defined else (metrics.pending_drafts if metrics and metrics.pending_drafts is defined else (metrics.pending_generated_content if metrics and metrics.pending_generated_content is defined else 0))) %}
+
+<!-- 1. Overview Metrics Grid -->
+<section class="metrics-grid" aria-label="System Metrics">
+  <div class="metric-card">
+    <span class="metric-label">Expeditions</span>
+    <span class="metric-value">{{ val_exp }}</span>
+    <span class="metric-sub">Field research missions</span>
+  </div>
+
+  <div class="metric-card">
+    <span class="metric-label">Reports</span>
+    <span class="metric-value">{{ val_rep }}</span>
+    <span class="metric-sub">Published field reports</span>
+  </div>
+
+  <div class="metric-card">
+    <span class="metric-label">Datasets</span>
+    <span class="metric-value">{{ val_dat }}</span>
+    <span class="metric-sub">Open scientific data</span>
+  </div>
+
+  <div class="metric-card">
+    <span class="metric-label">Publications</span>
+    <span class="metric-value">{{ val_pub }}</span>
+    <span class="metric-sub">Peer-reviewed papers</span>
+  </div>
+
+  <div class="metric-card">
+    <span class="metric-label">Media Assets</span>
+    <span class="metric-value">{{ val_med }}</span>
+    <span class="metric-sub">Photos &amp; video archives</span>
+  </div>
+
+  <div class="metric-card">
+    <span class="metric-label">Activities</span>
+    <span class="metric-value">{{ val_act }}</span>
+    <span class="metric-sub">Workshops, news &amp; events</span>
+  </div>
+
+  <div class="metric-card {% if val_pen > 0 %}highlight{% endif %}">
+    <span class="metric-label">Pending Drafts</span>
+    <span class="metric-value">{{ val_pen }}</span>
+    <span class="metric-sub">Awaiting outreach review</span>
+  </div>
+</section>
+
+<!-- 2. Quick Action Bar -->
+<section class="action-bar" aria-label="Quick Actions">
+  <div class="action-bar-info">
+    <span class="action-bar-title">Administrative Operations</span>
+    <span class="action-bar-desc">Run periodic AI outreach synthesis or catalog new expedition records.</span>
+  </div>
+  <div class="action-buttons">
+    <form action="/admin/trigger-content-generation" method="POST" style="margin:0; display:inline-flex;">
+      <button type="submit" class="btn btn-primary" title="Scans published reports, datasets &amp; activities and synthesizes outreach drafts">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        Trigger AI Content Generation Now
+      </button>
+    </form>
+
+    <a href="/expeditions" class="btn btn-secondary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Manage Expeditions
+    </a>
+
+    <a href="/admin/generated-content?status=pending_review" class="btn btn-outline">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      Review Drafts {% if val_pen > 0 %}({{ val_pen }}){% endif %}
+    </a>
+  </div>
+</section>
+
+<!-- 3. Summary Tables Grid -->
+<div style="display: flex; flex-direction: column; gap: 24px;">
+
+  <!-- Table A: Pending Generated Content Queue -->
+  {% set pending_list = pending_content if pending_content is defined else (pending_drafts if pending_drafts is defined else (pending_queue if pending_queue is defined else [])) %}
+  <section class="admin-card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span>Pending Generated Content Queue</span>
+      </div>
+      <div style="display:flex; align-items:center; gap: 10px;">
+        <span class="card-count">{{ pending_list|length }} pending review</span>
+        <a href="/admin/generated-content?status=pending_review" class="btn btn-sm btn-outline">View All &rarr;</a>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th style="width: 70px;">ID</th>
+            <th style="width: 200px;">Source Record</th>
+            <th style="width: 140px;">Platform</th>
+            <th>Snippet Preview</th>
+            <th style="width: 140px;">Generated At</th>
+            <th style="width: 110px; text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if pending_list and pending_list|length > 0 %}
+            {% for item in pending_list[:6] %}
+              <tr>
+                <td class="table-code">#{{ item.id }}</td>
+                <td>
+                  <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span class="pill pill-type" style="align-self: flex-start;">
+                      {{ item.source_type|upper if item.source_type is defined else 'RECORD' }}
+                    </span>
+                    <span style="font-weight: 500; font-size: 13px;">
+                      {{ item.source_title if item.source_title is defined else (item.source_type|capitalize ~ ' #' ~ item.source_id if item.source_id is defined else 'Record #' ~ item.id) }}
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  {% set p_key = item.platform|lower if item.platform is defined else '' %}
+                  {% if p_key == 'tweet' %}
+                    <span class="pill pill-platform-tweet">Twitter (X)</span>
+                  {% elif p_key == 'linkedin' %}
+                    <span class="pill pill-platform-linkedin">LinkedIn</span>
+                  {% elif p_key == 'instagram' %}
+                    <span class="pill pill-platform-instagram">Instagram</span>
+                  {% else %}
+                    <span class="pill pill-platform-web">Web Summary</span>
+                  {% endif %}
+                </td>
+                <td class="table-snippet">
+                  {{ item.content[:115] if item.content is defined else '' }}{% if item.content is defined and item.content|length > 115 %}...{% endif %}
+                </td>
+                <td style="font-size: 12px; color: var(--text-muted);">
+                  {{ item.created_at.strftime('%b %d, %H:%M') if item.created_at and item.created_at.strftime is defined else (item.created_at if item.created_at is defined else '&mdash;'|safe) }}
+                </td>
+                <td style="text-align: right;">
+                  <a href="/admin/generated-content/{{ item.id }}" class="btn btn-sm btn-primary">
+                    Review &rarr;
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <div class="empty-state-title">No Pending Drafts in Queue</div>
+                  <div class="empty-state-desc">All generated outreach drafts have been reviewed, or no published records require new posts.</div>
+                  <form action="/admin/trigger-content-generation" method="POST" style="display:inline-block;">
+                    <button type="submit" class="btn btn-sm btn-secondary">Scan Repository Now</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Table B: Recent System Items (Last 5 published reports & datasets) -->
+  {% set items_list = recent_items if recent_items is defined else (recent_system_items if recent_system_items is defined else []) %}
+  <section class="admin-card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        <span>Recent System Items (Published Reports &amp; Datasets)</span>
+      </div>
+      <div style="display:flex; align-items:center; gap: 10px;">
+        <span class="card-count">Latest published records</span>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th style="width: 100px;">Type</th>
+            <th>Title</th>
+            <th style="width: 220px;">Expedition</th>
+            <th style="width: 130px;">Identifiers</th>
+            <th style="width: 130px;">Published Date</th>
+            <th style="width: 100px; text-align: right;">Record</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if items_list and items_list|length > 0 %}
+            {% for item in items_list[:5] %}
+              <tr>
+                <td>
+                  {% set itype = item.item_type|lower if item.item_type is defined else (item.type|lower if item.type is defined else ('report' if item.authors is defined else 'dataset')) %}
+                  {% if itype == 'report' %}
+                    <span class="pill pill-platform-web">REPORT</span>
+                  {% else %}
+                    <span class="pill pill-platform-linkedin">DATASET</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div style="font-weight: 500; color: var(--text-primary);">
+                    {{ item.title }}
+                  </div>
+                  {% if item.authors is defined and item.authors %}
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                      Authors: {{ item.authors[:60] }}{% if item.authors|length > 60 %}...{% endif %}
+                    </div>
+                  {% elif item.variables is defined and item.variables %}
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                      Variables: {{ item.variables[:60] }}{% if item.variables|length > 60 %}...{% endif %}
+                    </div>
+                  {% endif %}
+                </td>
+                <td style="color: var(--text-secondary);">
+                  {{ item.expedition.name if item.expedition is defined and item.expedition else (item.expedition_name if item.expedition_name is defined else ('Expedition #' ~ item.expedition_id if item.expedition_id is defined else '&mdash;'|safe)) }}
+                </td>
+                <td class="table-code">
+                  {% if item.doi is defined and item.doi %}
+                    <span>{{ item.doi }}</span>
+                  {% elif item.license is defined and item.license %}
+                    <span style="color: var(--text-muted);">{{ item.license }}</span>
+                  {% else %}
+                    <span style="color: var(--text-muted);">&mdash;</span>
+                  {% endif %}
+                </td>
+                <td style="font-size: 12px; color: var(--text-muted);">
+                  {{ item.created_at.strftime('%Y-%m-%d') if item.created_at and item.created_at.strftime is defined else (item.created_at if item.created_at is defined else '&mdash;'|safe) }}
+                </td>
+                <td style="text-align: right;">
+                  {% if itype == 'report' %}
+                    <a href="/reports/{{ item.id }}" class="btn btn-sm btn-outline">View</a>
+                  {% else %}
+                    <a href="/datasets/{{ item.id }}" class="btn btn-sm btn-outline">View</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <div class="empty-state-title">No Recent Records Available</div>
+                  <div class="empty-state-desc">No recently published reports or datasets are currently loaded in the database.</div>
+                </div>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

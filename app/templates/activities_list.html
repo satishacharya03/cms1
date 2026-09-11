@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Activities, News &amp; Events — Expedition CMS{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/">Home</a>
+  <span class="sep">/</span>
+  <span>Activities &amp; News</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="page-header-content">
+    <div class="page-kicker">Dispatches &amp; Announcements</div>
+    <h1>Activities, News &amp; Events</h1>
+    <p class="page-description">
+      Field dispatches, expedition announcements, international symposium workshops, and operational milestones from ongoing polar and oceanographic programs.
+    </p>
+  </div>
+  <div>
+    <span class="badge badge-navy">{{ activities|length if activities is defined else 0 }} Items Posted</span>
+  </div>
+</section>
+
+<!-- Filter Toolbar -->
+<section class="filter-panel">
+  <form method="get" action="/activities" class="filter-form">
+    <!-- Activity Type Filter Pills -->
+    <div class="filter-group" style="flex: 2 1 320px;">
+      <label class="filter-label">Filter by Type</label>
+      {% set current_type = selected_type or (request.query_params.get('type') if request is defined else '') %}
+      <div class="pill-tabs">
+        <a href="/activities" class="pill-tab {% if not current_type or current_type == 'all' %}active{% endif %}">
+          All
+        </a>
+        <a href="/activities?type=news" class="pill-tab {% if current_type == 'news' %}active{% endif %}">
+          News
+        </a>
+        <a href="/activities?type=event" class="pill-tab {% if current_type == 'event' %}active{% endif %}">
+          Events
+        </a>
+        <a href="/activities?type=workshop" class="pill-tab {% if current_type == 'workshop' %}active{% endif %}">
+          Workshops
+        </a>
+      </div>
+      <input type="hidden" name="type" value="{{ current_type }}">
+    </div>
+
+    <!-- Keyword search -->
+    <div class="filter-group" style="flex: 2 1 240px;">
+      <label class="filter-label" for="filter-q">Keyword</label>
+      <input type="text" id="filter-q" name="q" class="form-input" placeholder="Search title or text..." 
+             value="{{ selected_q or (request.query_params.get('q', '') if request is defined else '') }}">
+    </div>
+
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a href="/activities" class="btn btn-outline">Reset</a>
+    </div>
+  </form>
+</section>
+
+<!-- Activities Stream -->
+<section class="activities-stream">
+  {% if activities and activities|length > 0 %}
+    <div class="timeline-list">
+      {% for act in activities %}
+        <article class="activity-card">
+          <!-- Date Rail -->
+          <div class="activity-date-rail">
+            <time datetime="{{ act.date }}" class="activity-calendar-box">
+              <span class="cal-day">{{ act.date.strftime('%d') if act.date.strftime is defined else act.date }}</span>
+              <span class="cal-month">{{ act.date.strftime('%b') if act.date.strftime is defined else '' }}</span>
+              <span class="cal-year">{{ act.date.strftime('%Y') if act.date.strftime is defined else '' }}</span>
+            </time>
+          </div>
+
+          <!-- Main Content -->
+          <div class="activity-content-box">
+            <div class="activity-meta-top">
+              {% if act.activity_type == 'news' %}
+                <span class="badge badge-navy">News Dispatch</span>
+              {% elif act.activity_type == 'event' %}
+                <span class="badge badge-rust">Public Event</span>
+              {% elif act.activity_type == 'workshop' %}
+                <span class="badge badge-sage">Scientific Workshop</span>
+              {% else %}
+                <span class="badge">{{ act.activity_type|upper }}</span>
+              {% endif %}
+
+              <span class="activity-exact-date">
+                {{ act.date.strftime('%A, %B %d, %Y') if act.date.strftime is defined else act.date }}
+              </span>
+            </div>
+
+            <h2 class="activity-title">
+              <a href="/activities/{{ act.id }}">{{ act.title }}</a>
+            </h2>
+
+            <p class="activity-snippet">
+              {{ act.description[:260] }}{% if act.description|length > 260 %}…{% endif %}
+            </p>
+
+            <div class="activity-footer-row">
+              <!-- Related Expeditions -->
+              {% if act.related_expeditions %}
+                <div class="related-expeditions-tagline">
+                  <span class="related-label">Linked Expeditions:</span>
+                  {% for exp in act.related_expeditions %}
+                    <a href="/expeditions/{{ exp.id }}" class="badge badge-navy">{{ exp.name }}</a>
+                  {% endfor %}
+                </div>
+              {% elif act.related_expedition_ids %}
+                <div class="related-expeditions-tagline">
+                  <span class="related-label">Linked Expeditions:</span>
+                  {% for eid in act.related_expedition_ids %}
+                    <a href="/expeditions/{{ eid }}" class="badge badge-navy">Expedition #{{ eid }}</a>
+                  {% endfor %}
+                </div>
+              {% endif %}
+
+              <div class="activity-readmore">
+                <a href="/activities/{{ act.id }}" class="btn btn-outline btn-sm">
+                  Full Details &rarr;
+                </a>
+              </div>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom: 1rem;">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+      <h3>No Activities or Announcements Found</h3>
+      <p>No activity records match your current filter criteria. Try clearing the filter to view all announcements.</p>
+      <a href="/activities" class="btn btn-outline">Reset Filter</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .activities-stream {
+    margin-top: 1rem;
+  }
+
+  .timeline-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  .activity-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 1.75rem 2rem;
+    display: flex;
+    gap: 2rem;
+    transition: border-color 0.15s ease;
+  }
+
+  .activity-card:hover {
+    border-color: var(--border-medium);
+  }
+
+  .activity-date-rail {
+    flex-shrink: 0;
+  }
+
+  .activity-calendar-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 72px;
+    background-color: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-family: var(--font-mono);
+  }
+
+  .cal-day {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1;
+  }
+
+  .cal-month {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  .cal-year {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  .activity-content-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .activity-meta-top {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .activity-exact-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .activity-title {
+    font-size: 1.45rem;
+    line-height: 1.3;
+    margin-bottom: 0.6rem;
+  }
+
+  .activity-title a {
+    color: var(--text-main);
+  }
+
+  .activity-title a:hover {
+    color: var(--accent-ink);
+  }
+
+  .activity-snippet {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 1.25rem;
+    flex: 1;
+  }
+
+  .activity-footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 0.85rem;
+  }
+
+  .related-expeditions-tagline {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .related-label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-right: 0.2rem;
+  }
+
+  @media (max-width: 640px) {
+    .activity-card {
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.25rem;
+    }
+    .activity-calendar-box {
+      flex-direction: row;
+      width: auto;
+      height: auto;
+      padding: 4px 10px;
+      gap: 6px;
+    }
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}{{ publication.title }} ({{ publication.year }}) — Scientific Publication{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/">Home</a>
+  <span class="sep">/</span>
+  <a href="/publications">Scientific Publications</a>
+  <span class="sep">/</span>
+  <span>Article #{{ publication.id }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<article class="pub-detail-container">
+  <!-- Article Scholarly Header -->
+  <header class="pub-detail-header">
+    <div class="pub-journal-bar">
+      <div class="pub-journal-meta">
+        <span class="pub-journal-name">{{ publication.journal }}</span>
+        <span class="pub-bullet">&bull;</span>
+        <span class="pub-year-badge">{{ publication.year }}</span>
+      </div>
+
+      <div class="pub-status-badges">
+        {% if publication.published %}
+          <span class="badge badge-sage">Peer-Reviewed &bull; Published</span>
+        {% else %}
+          <span class="badge badge-ochre">In Press / Preprint</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <h1 class="pub-detail-title">{{ publication.title }}</h1>
+
+    <div class="pub-detail-byline">
+      <div class="pub-authors-list">
+        <span class="by-label">Authors:</span>
+        <span class="author-names">{{ publication.authors }}</span>
+      </div>
+    </div>
+
+    <!-- Quick action links bar -->
+    <div class="pub-action-bar">
+      {% if publication.doi %}
+        <a href="https://doi.org/{{ publication.doi }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          <span>doi:{{ publication.doi }}</span>
+        </a>
+      {% endif %}
+
+      {% if publication.link %}
+        <a href="{{ publication.link }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          <span>Read at Publisher</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Two-Column Layout -->
+  <div class="pub-grid">
+    <!-- Main Reading Area -->
+    <div class="pub-main-col">
+      <!-- Abstract -->
+      <section class="pub-section">
+        <h2 class="section-heading">Abstract</h2>
+        <div class="pub-abstract-text">
+          {{ publication.abstract }}
+        </div>
+      </section>
+
+      <!-- Citation Section -->
+      <section class="pub-section">
+        <div class="citation-block">
+          <div class="citation-header">
+            <span class="citation-title">Bibliographic Citation (APA)</span>
+            <button type="button" class="btn-copy-cite" onclick="copyPubCitation()">Copy Citation</button>
+          </div>
+          <div class="citation-text" id="pub-citation-text">
+            {{ publication.authors }} ({{ publication.year }}). {{ publication.title }}. <em>{{ publication.journal }}</em>.{% if publication.doi %} https://doi.org/{{ publication.doi }}{% elif publication.link %} {{ publication.link }}{% endif %}
+          </div>
+        </div>
+
+        <div class="bibtex-block">
+          <div class="citation-header">
+            <span class="citation-title">BibTeX Reference</span>
+            <button type="button" class="btn-copy-cite" onclick="copyBibtex()">Copy BibTeX</button>
+          </div>
+          <pre class="bibtex-code" id="bibtex-text">@article{pub_{{ publication.id }}_{{ publication.year }},
+  author  = { {{- publication.authors -}} },
+  title   = { {{- publication.title -}} },
+  journal = { {{- publication.journal -}} },
+  year    = { {{- publication.year -}} },
+{%- if publication.doi %}
+  doi     = { {{- publication.doi -}} },
+{%- endif %}
+  url     = { {{- publication.link -}} }
+}</pre>
+        </div>
+      </section>
+
+      <div style="margin-top: 2rem;">
+        <a href="/publications" class="btn btn-outline">&larr; Back to Publications Bibliography</a>
+      </div>
+    </div>
+
+    <!-- Sidebar: Linked Expedition & Identifiers -->
+    <aside class="pub-sidebar">
+      <!-- Linked Expedition -->
+      <div class="sidebar-widget">
+        <div class="widget-kicker">Originating Expedition</div>
+        {% if publication.expedition %}
+          <div class="expedition-sidebar-card">
+            <h3 class="expedition-name">
+              <a href="/expeditions/{{ publication.expedition.id }}">{{ publication.expedition.name }}</a>
+            </h3>
+            <dl class="expedition-meta-list">
+              <div class="meta-row">
+                <dt>Region</dt>
+                <dd>{{ publication.expedition.region }}</dd>
+              </div>
+              <div class="meta-row">
+                <dt>Expedition Leader</dt>
+                <dd>{{ publication.expedition.team_leader }}</dd>
+              </div>
+              <div class="meta-row">
+                <dt>Operational Status</dt>
+                <dd><span class="badge">{{ publication.expedition.status|capitalize }}</span></dd>
+              </div>
+              <div class="meta-row">
+                <dt>Timeline</dt>
+                <dd>{{ publication.expedition.start_date }} &ndash; {{ publication.expedition.end_date }}</dd>
+              </div>
+            </dl>
+            <div style="margin-top: 1rem;">
+              <a href="/expeditions/{{ publication.expedition.id }}" class="btn btn-outline btn-sm" style="width: 100%;">
+                View Expedition Archive &rarr;
+              </a>
+            </div>
+          </div>
+        {% elif publication.expedition_id %}
+          <div class="expedition-sidebar-card">
+            <h3 class="expedition-name">Expedition #{{ publication.expedition_id }}</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Expedition metadata catalog link.</p>
+          </div>
+        {% else %}
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Independent publication.</p>
+        {% endif %}
+      </div>
+
+      <!-- Publication Metadata Card -->
+      <div class="sidebar-widget">
+        <div class="widget-kicker">Publication Details</div>
+        <dl class="expedition-meta-list">
+          <div class="meta-row">
+            <dt>Journal</dt>
+            <dd style="max-width: 170px; overflow: hidden; text-overflow: ellipsis;">{{ publication.journal }}</dd>
+          </div>
+          <div class="meta-row">
+            <dt>Year</dt>
+            <dd>{{ publication.year }}</dd>
+          </div>
+          {% if publication.doi %}
+            <div class="meta-row">
+              <dt>DOI</dt>
+              <dd>
+                <a href="https://doi.org/{{ publication.doi }}" target="_blank" rel="noopener noreferrer" style="font-family: var(--font-mono); font-size: 0.78rem;">
+                  {{ publication.doi }}
+                </a>
+              </dd>
+            </div>
+          {% endif %}
+          <div class="meta-row">
+            <dt>Outbound URL</dt>
+            <dd>
+              <a href="{{ publication.link }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.78rem;">
+                Publisher Page ↗
+              </a>
+            </dd>
+          </div>
+          <div class="meta-row">
+            <dt>Internal Index</dt>
+            <dd><code>PUB-{{ publication.id }}</code></dd>
+          </div>
+        </dl>
+      </div>
+    </aside>
+  </div>
+</article>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function copyPubCitation() {
+    const text = document.getElementById('pub-citation-text').innerText.trim();
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = event.target;
+      const original = btn.innerText;
+      btn.innerText = 'Copied!';
+      setTimeout(() => { btn.innerText = original; }, 1800);
+    });
+  }
+
+  function copyBibtex() {
+    const text = document.getElementById('bibtex-text').innerText.trim();
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = event.target;
+      const original = btn.innerText;
+      btn.innerText = 'Copied!';
+      setTimeout(() => { btn.innerText = original; }, 1800);
+    });
+  }
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .pub-detail-container {
+    max-width: var(--container-max);
+    margin: 0 auto;
+  }
+
+  .pub-detail-header {
+    border-bottom: 2px solid var(--border-dark);
+    padding-bottom: 1.75rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .pub-journal-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .pub-journal-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    color: var(--accent-ink);
+  }
+
+  .pub-journal-name {
+    font-style: italic;
+    font-weight: 600;
+  }
+
+  .pub-bullet {
+    color: var(--border-medium);
+  }
+
+  .pub-year-badge {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  .pub-detail-title {
+    font-size: 2.3rem;
+    line-height: 1.25;
+    margin: 0.5rem 0 1rem;
+    color: var(--text-main);
+  }
+
+  .pub-detail-byline {
+    margin-bottom: 1.25rem;
+    font-size: 1rem;
+  }
+
+  .pub-authors-list {
+    color: var(--text-secondary);
+  }
+
+  .pub-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .pub-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 3rem;
+    align-items: start;
+  }
+
+  .pub-section {
+    margin-bottom: 2.5rem;
+  }
+
+  .pub-abstract-text {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: var(--text-main);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    padding: 1.75rem 2rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .bibtex-block {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .bibtex-code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    background: var(--bg-subtle);
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    color: var(--text-main);
+    line-height: 1.45;
+  }
+
+  .pub-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  @media (max-width: 860px) {
+    .pub-grid {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+  }
+</style>
+{% endblock %}

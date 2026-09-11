@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% set active_page = 'register' %}
+
+{% block title %}Account Registration — MATRIXCMS Expedition &amp; Research Portal{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-institution-label">Chandigarh &bull; CSE Repository</div>
+      <h1 class="auth-title">Account Registration</h1>
+      <p class="auth-subtitle">Establish an academic account to contribute field logs, ingest telemetry data, or conduct curated analysis.</p>
+    </div>
+
+    <!-- Feedback display containers -->
+    <div id="auth-error-box" class="alert alert-error" style="display: {% if error %}block{% else %}none{% endif %}; margin-bottom: 1.5rem;">
+      <span class="alert-indicator">[ERROR]</span>
+      <span id="auth-error-text" class="alert-text">{{ error if error else '' }}</span>
+    </div>
+
+    <div id="auth-success-box" class="alert alert-success" style="display: {% if success %}block{% else %}none{% endif %}; margin-bottom: 1.5rem;">
+      <span class="alert-indicator">[SUCCESS]</span>
+      <span id="auth-success-text" class="alert-text">{{ success if success else '' }}</span>
+    </div>
+
+    <form id="register-form" action="/register" method="post" class="auth-form">
+      <div class="form-group">
+        <label for="email" class="form-label">Academic / Institutional Email</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email" 
+          class="form-control" 
+          placeholder="researcher@chandigarh.edu" 
+          required 
+          autocomplete="email"
+          autofocus
+        >
+        <small class="form-help">Preferred: Institutional domain affiliated with academic or research institutions.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Account Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          class="form-control" 
+          placeholder="Minimum 8 characters with numbers and symbols" 
+          required 
+          minlength="6"
+          autocomplete="new-password"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="role" class="form-label">Requested Institutional Role</label>
+        <select id="role" name="role" class="form-control" required>
+          <option value="researcher" selected>Field Researcher (Submit expedition datasets, logs &amp; reports)</option>
+          <option value="data_manager">Data Manager / Curator (Curate catalogs, verify DOIs &amp; review LLM content)</option>
+          <option value="public">Public Observer (Read, search &amp; download open datasets)</option>
+          <option value="admin">System Administrator (Full expedition &amp; user management)</option>
+        </select>
+        <small class="form-help">Initial registrations on fresh instances receive administrative designation automatically.</small>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" id="submit-btn" class="btn btn-primary btn-block">Create Account</button>
+      </div>
+    </form>
+
+    <div class="policy-note">
+      By registering, you agree to adhere to Open Science governance, FAIR telemetry metadata guidelines, and the CC-BY-4.0 international sharing framework.
+    </div>
+
+    <div class="auth-footer-link">
+      <span>Already registered with MATRIXCMS?</span>
+      <a href="/login" class="link-underlined">Sign In with Credentials &rarr;</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function() {
+    const form = document.getElementById('register-form');
+    const errorBox = document.getElementById('auth-error-box');
+    const errorText = document.getElementById('auth-error-text');
+    const successBox = document.getElementById('auth-success-box');
+    const successText = document.getElementById('auth-success-text');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (!form) return;
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const role = document.getElementById('role').value;
+
+      if (!email || !password) return;
+
+      errorBox.style.display = 'none';
+      successBox.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Registering Account...';
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, password: password, role: role })
+        });
+
+        if (response.ok) {
+          const user = await response.json();
+          successText.textContent = `Account created successfully for ${user.email} (Role: ${user.role}). Redirecting to sign in...`;
+          successBox.style.display = 'block';
+          form.reset();
+
+          setTimeout(function() {
+            window.location.href = '/login';
+          }, 1800);
+          return;
+        }
+
+        const errData = await response.json().catch(() => ({ detail: 'Registration failed.' }));
+        errorText.textContent = errData.detail || 'Could not complete registration. Please verify details.';
+        errorBox.style.display = 'block';
+      } catch (err) {
+        // Fallback: submit form natively
+        form.submit();
+        return;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+      }
+    });
+  })();
+</script>
+{% endblock %}

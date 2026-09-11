@@ -1,0 +1,198 @@
+{% extends "admin/base.html" %}
+
+{% block title %}AI Outreach Drafts{% endblock %}
+{% set active_page = "generated_content" %}
+
+{% block breadcrumbs %}
+  <span class="breadcrumb-separator">/</span>
+  <span class="breadcrumb-current">AI Outreach Drafts</span>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+  <div>
+    <h1 class="page-title">AI Outreach Drafts</h1>
+    <p class="page-description">Automated multi-platform communication drafts generated from scientific outputs.</p>
+  </div>
+  <div class="page-actions">
+    <form action="/admin/trigger-content-generation" method="POST" style="margin:0;">
+      <button type="submit" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        Generate Content Now
+      </button>
+    </form>
+  </div>
+</div>
+
+{# Current Filter Parameter Resolution #}
+{% set cur_source = selected_source_type if selected_source_type is defined else (source_type if source_type is defined else (request.query_params.get('source_type', '') if request is defined and request.query_params is defined else '')) %}
+{% set cur_platform = selected_platform if selected_platform is defined else (platform if platform is defined else (request.query_params.get('platform', '') if request is defined and request.query_params is defined else '')) %}
+{% set cur_status = selected_status if selected_status is defined else (status if status is defined else (request.query_params.get('status', '') if request is defined and request.query_params is defined else '')) %}
+
+<!-- Filter Control Panel -->
+<section class="filter-panel" aria-label="Filters">
+  <form action="/admin/generated-content" method="GET" class="filter-form">
+    
+    <!-- Source Type Filter -->
+    <div class="filter-group">
+      <label for="filter-source" class="filter-label">Source Type</label>
+      <select id="filter-source" name="source_type" class="form-select">
+        <option value="" {% if not cur_source %}selected{% endif %}>All Source Types</option>
+        <option value="report" {% if cur_source == 'report' %}selected{% endif %}>Report</option>
+        <option value="dataset" {% if cur_source == 'dataset' %}selected{% endif %}>Dataset</option>
+        <option value="activity" {% if cur_source == 'activity' %}selected{% endif %}>Activity</option>
+      </select>
+    </div>
+
+    <!-- Platform Filter -->
+    <div class="filter-group">
+      <label for="filter-platform" class="filter-label">Platform</label>
+      <select id="filter-platform" name="platform" class="form-select">
+        <option value="" {% if not cur_platform %}selected{% endif %}>All Platforms</option>
+        <option value="web_summary" {% if cur_platform == 'web_summary' %}selected{% endif %}>Web Summary</option>
+        <option value="tweet" {% if cur_platform == 'tweet' %}selected{% endif %}>Twitter (X)</option>
+        <option value="linkedin" {% if cur_platform == 'linkedin' %}selected{% endif %}>LinkedIn</option>
+        <option value="instagram" {% if cur_platform == 'instagram' %}selected{% endif %}>Instagram</option>
+      </select>
+    </div>
+
+    <!-- Status Filter -->
+    <div class="filter-group">
+      <label for="filter-status" class="filter-label">Status</label>
+      <select id="filter-status" name="status" class="form-select">
+        <option value="" {% if not cur_status %}selected{% endif %}>All Statuses</option>
+        <option value="pending_review" {% if cur_status == 'pending_review' %}selected{% endif %}>Pending Review</option>
+        <option value="approved" {% if cur_status == 'approved' %}selected{% endif %}>Approved</option>
+        <option value="rejected" {% if cur_status == 'rejected' %}selected{% endif %}>Rejected</option>
+      </select>
+    </div>
+
+    <!-- Actions -->
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button type="submit" class="btn btn-secondary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        Filter
+      </button>
+
+      {% if cur_source or cur_platform or cur_status %}
+        <a href="/admin/generated-content" class="btn btn-outline" title="Clear all filters">
+          Reset
+        </a>
+      {% endif %}
+    </div>
+
+  </form>
+</section>
+
+{# Resolve Items List #}
+{% set draft_items = items if items is defined else (drafts if drafts is defined else (generated_contents if generated_contents is defined else [])) %}
+
+<!-- Drafts List Table -->
+<section class="admin-card">
+  <div class="card-header">
+    <div class="card-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+      <span>Outreach Catalog</span>
+    </div>
+    <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">
+      Total: {{ draft_items|length }} record{% if draft_items|length != 1 %}s{% endif %}
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width: 70px;">ID</th>
+          <th style="width: 220px;">Source Record</th>
+          <th style="width: 140px;">Platform</th>
+          <th>Snippet Preview</th>
+          <th style="width: 130px;">Status</th>
+          <th style="width: 150px;">Created At</th>
+          <th style="width: 110px; text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if draft_items and draft_items|length > 0 %}
+          {% for item in draft_items %}
+            <tr>
+              <td class="table-code">#{{ item.id }}</td>
+              <td>
+                <div style="display: flex; flex-direction: column; gap: 3px;">
+                  <span class="pill pill-type" style="align-self: flex-start;">
+                    {{ item.source_type|upper if item.source_type is defined else 'RECORD' }}
+                  </span>
+                  <span style="font-weight: 500; font-size: 13px; line-height: 1.3;">
+                    {% if item.source_title is defined and item.source_title %}
+                      {{ item.source_title }}
+                    {% else %}
+                      {{ item.source_type|capitalize if item.source_type is defined else 'Item' }} #{{ item.source_id }}
+                    {% endif %}
+                  </span>
+                </div>
+              </td>
+              <td>
+                {% set p = item.platform|lower if item.platform is defined else '' %}
+                {% if p == 'tweet' %}
+                  <span class="pill pill-platform-tweet">Twitter (X)</span>
+                {% elif p == 'linkedin' %}
+                  <span class="pill pill-platform-linkedin">LinkedIn</span>
+                {% elif p == 'instagram' %}
+                  <span class="pill pill-platform-instagram">Instagram</span>
+                {% else %}
+                  <span class="pill pill-platform-web">Web Summary</span>
+                {% endif %}
+              </td>
+              <td class="table-snippet">
+                {{ item.content[:130] if item.content is defined else '' }}{% if item.content is defined and item.content|length > 130 %}...{% endif %}
+              </td>
+              <td>
+                {% set s = item.status|lower if item.status is defined else 'pending_review' %}
+                {% if s == 'approved' %}
+                  <span class="pill pill-approved">&bull; Approved</span>
+                {% elif s == 'rejected' %}
+                  <span class="pill pill-rejected">&bull; Rejected</span>
+                {% else %}
+                  <span class="pill pill-pending">&bull; Pending Review</span>
+                {% endif %}
+              </td>
+              <td style="font-size: 12px; color: var(--text-muted);">
+                {{ item.created_at.strftime('%Y-%m-%d %H:%M') if item.created_at and item.created_at.strftime is defined else (item.created_at if item.created_at is defined else '&mdash;'|safe) }}
+              </td>
+              <td style="text-align: right;">
+                <a href="/admin/generated-content/{{ item.id }}" class="btn btn-sm btn-outline">
+                  View / Edit
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <div class="empty-state-title">No Generated Drafts Found</div>
+                <div class="empty-state-desc">
+                  {% if cur_source or cur_platform or cur_status %}
+                    No records match the selected filter criteria.
+                  {% else %}
+                    No AI outreach drafts exist yet. Run a repository scan to generate drafts from published records.
+                  {% endif %}
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                  {% if cur_source or cur_platform or cur_status %}
+                    <a href="/admin/generated-content" class="btn btn-sm btn-secondary">Reset Filters</a>
+                  {% endif %}
+                  <form action="/admin/trigger-content-generation" method="POST" style="margin:0; display:inline;">
+                    <button type="submit" class="btn btn-sm btn-primary">Trigger Generation</button>
+                  </form>
+                </div>
+              </div>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

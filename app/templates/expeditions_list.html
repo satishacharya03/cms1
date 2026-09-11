@@ -1,0 +1,613 @@
+{% extends "base.html" %}
+
+{% set active_page = 'expeditions' %}
+
+{% block title %}Scientific Expeditions Directory &mdash; MATRIXCMS{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/">Home</a>
+  <span class="sep">/</span>
+  <span>Expeditions</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="catalog-header">
+    <div class="d-flex justify-between align-center" style="flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+        <div>
+            <h1 style="font-family: var(--font-serif); font-size: 2.1rem; color: var(--color-academic-navy); margin-bottom: 0.35rem;">Scientific Expeditions</h1>
+            <p class="text-secondary" style="font-size: 0.95rem; max-width: 720px; margin-bottom: 0; color: var(--color-muted);">
+                Archival catalog of polar, marine, and high-latitude field campaigns. Filter records by operational status, geographic region, and timeline to access linked datasets and cruise reports.
+            </p>
+        </div>
+        <div>
+            <button type="button" class="btn btn-primary" onclick="openExpeditionModal()" id="btn-register-expedition">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right: 4px;">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Register New Expedition
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Stats Bar -->
+    <div class="stats-ribbon">
+        <div class="stat-item">
+            <span class="stat-num" id="stat-total">{{ expeditions|length if expeditions is defined else 0 }}</span>
+            <span class="stat-label">Total Expeditions</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-ongoing">
+                {% if expeditions is defined %}
+                    {{ expeditions | selectattr('status', 'equalto', 'ongoing') | list | length }}
+                {% else %}0{% endif %}
+            </span>
+            <span class="stat-label">Ongoing In-Field</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-completed">
+                {% if expeditions is defined %}
+                    {{ expeditions | selectattr('status', 'equalto', 'completed') | list | length }}
+                {% else %}0{% endif %}
+            </span>
+            <span class="stat-label">Completed</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-planned">
+                {% if expeditions is defined %}
+                    {{ expeditions | selectattr('status', 'equalto', 'planned') | list | length }}
+                {% else %}0{% endif %}
+            </span>
+            <span class="stat-label">Planned</span>
+        </div>
+    </div>
+</section>
+
+<!-- Filter & Search Controls -->
+<section class="filter-panel" style="margin-top: 1.5rem; margin-bottom: 2rem;">
+    <form method="GET" action="" id="expedition-filter-form" class="filter-form">
+        <div class="filter-grid">
+            <div class="filter-field">
+                <label for="filter-status" class="form-label">Status</label>
+                <select name="status" id="filter-status" class="form-control" onchange="applyFilters()">
+                    <option value="">All Statuses</option>
+                    <option value="planned" {% if current_status == 'planned' or (request is defined and request.query_params.get('status') == 'planned') %}selected{% endif %}>Planned</option>
+                    <option value="ongoing" {% if current_status == 'ongoing' or (request is defined and request.query_params.get('status') == 'ongoing') %}selected{% endif %}>Ongoing</option>
+                    <option value="completed" {% if current_status == 'completed' or (request is defined and request.query_params.get('status') == 'completed') %}selected{% endif %}>Completed</option>
+                    <option value="archived" {% if current_status == 'archived' or (request is defined and request.query_params.get('status') == 'archived') %}selected{% endif %}>Archived</option>
+                </select>
+            </div>
+
+            <div class="filter-field">
+                <label for="filter-region" class="form-label">Region</label>
+                <input type="text" name="region" id="filter-region" class="form-control" 
+                       placeholder="e.g. Arctic, Weddell Sea, Svalbard" 
+                       value="{{ current_region if current_region is defined and current_region else (request.query_params.get('region', '') if request is defined else '') }}"
+                       oninput="applyFilters()">
+            </div>
+
+            <div class="filter-field">
+                <label for="filter-search" class="form-label">Search Keyword</label>
+                <input type="text" name="q" id="filter-search" class="form-control" 
+                       placeholder="Name, leader, objectives..." 
+                       value="{{ current_q if current_q is defined and current_q else (request.query_params.get('q', '') if request is defined else '') }}"
+                       oninput="applyFilters()">
+            </div>
+
+            <div class="filter-actions">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="resetFilters()">Reset Filters</button>
+            </div>
+        </div>
+    </form>
+    <div class="filter-status-row">
+        <span class="text-muted" style="font-size: 0.8rem;" id="filter-count-indicator">
+            Showing <strong id="visible-count">{{ expeditions|length if expeditions is defined else 0 }}</strong> expedition record(s)
+        </span>
+    </div>
+</section>
+
+<!-- Expeditions Cards Grid -->
+<section class="expeditions-list" id="expeditions-container">
+    {% if expeditions is defined and expeditions|length > 0 %}
+        <div class="expeditions-grid">
+            {% for exp in expeditions %}
+            <article class="card expedition-card" 
+                     data-status="{{ exp.status|lower }}" 
+                     data-region="{{ exp.region|lower }}" 
+                     data-title="{{ exp.name|lower }}" 
+                     data-leader="{{ exp.team_leader|lower }}"
+                     data-objectives="{{ exp.objectives|lower if exp.objectives else '' }}">
+                
+                <!-- Card Header -->
+                <div class="card-header-row">
+                    <div class="region-tag">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                            <line x1="8" y1="2" x2="8" y2="18"></line>
+                            <line x1="16" y1="6" x2="16" y2="22"></line>
+                        </svg>
+                        <span>{{ exp.region }}</span>
+                    </div>
+                    <span class="badge badge-status-{{ exp.status|lower }}">{{ exp.status }}</span>
+                </div>
+
+                <!-- Expedition Title -->
+                <h3 class="expedition-title">
+                    <a href="/expeditions/{{ exp.id }}">{{ exp.name }}</a>
+                </h3>
+
+                <!-- Metadata Row -->
+                <div class="expedition-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">Team Leader</span>
+                        <span class="meta-value">{{ exp.team_leader }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Timeline</span>
+                        <span class="meta-value mono">
+                            {{ exp.start_date.strftime('%Y-%m-%d') if exp.start_date and exp.start_date.strftime is defined else exp.start_date }}
+                            &rarr;
+                            {{ exp.end_date.strftime('%Y-%m-%d') if exp.end_date and exp.end_date.strftime is defined else exp.end_date }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Objectives Snippet -->
+                <div class="expedition-snippet">
+                    {% if exp.objectives %}
+                        {{ exp.objectives[:175] }}{% if exp.objectives|length > 175 %}...{% endif %}
+                    {% else %}
+                        <span class="text-muted">No specific objectives summary registered.</span>
+                    {% endif %}
+                </div>
+
+                <!-- Card Footer -->
+                <div class="card-footer-row">
+                    <div class="output-counts">
+                        <span class="output-pill" title="Linked Cruise Reports">
+                            <strong>{{ exp.reports|length if exp.reports is defined else 0 }}</strong> Rep
+                        </span>
+                        <span class="output-pill" title="Linked Datasets">
+                            <strong>{{ exp.datasets|length if exp.datasets is defined else 0 }}</strong> Dat
+                        </span>
+                        <span class="output-pill" title="Linked Publications">
+                            <strong>{{ exp.publications|length if exp.publications is defined else 0 }}</strong> Pub
+                        </span>
+                    </div>
+                    <a href="/expeditions/{{ exp.id }}" class="btn btn-secondary btn-sm">
+                        View Dossier &rarr;
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state-box">
+            <p><strong>No expedition records found.</strong></p>
+            <p class="text-muted" style="font-size: 0.85rem;">There are currently no active or archived field expeditions matching your query.</p>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="resetFilters()" style="margin-top: 0.75rem;">Reset Filter Parameters</button>
+        </div>
+    {% endif %}
+
+    <!-- Client-side No Match Message -->
+    <div id="no-match-message" class="empty-state-box" style="display: none;">
+        <p><strong>No matching expeditions.</strong></p>
+        <p class="text-muted" style="font-size: 0.85rem;">No expedition matches your selected status, region, and keyword criteria.</p>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="resetFilters()" style="margin-top: 0.75rem;">Clear All Filters</button>
+    </div>
+</section>
+{% endblock %}
+
+{% block modals %}
+<!-- Register Expedition Modal -->
+<div class="modal-overlay" id="expeditionModal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <h3 id="modal-title" style="font-size: 1.15rem; font-family: var(--font-serif); color: var(--color-academic-navy);">Register New Field Expedition</h3>
+                <span class="text-muted" style="font-size: 0.78rem;">Submit cruise or terrestrial campaign metadata to the catalog</span>
+            </div>
+            <button type="button" class="modal-close-btn" onclick="closeExpeditionModal()" aria-label="Close dialog">&times;</button>
+        </div>
+
+        <form id="create-expedition-form" onsubmit="handleCreateExpedition(event)">
+            <div id="modal-error-alert" style="display: none; padding: 0.6rem 0.8rem; margin-bottom: 1rem; font-size: 0.82rem; background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 3px;"></div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="exp_name" class="form-label" style="display: block; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-light); margin-bottom: 0.35rem;">Expedition Title / Cruise Name *</label>
+                <input type="text" id="exp_name" name="name" class="form-control" required placeholder="e.g. Polarstern PS138 / ArcWatch-2" style="width: 100%; padding: 0.45rem 0.7rem; border: 1px solid var(--color-border-dark); border-radius: 3px; font-size: 0.88rem;">
+                <span class="form-help" style="font-size: 0.74rem; color: var(--color-muted);">Official expedition designation or vessel cruise identifier.</span>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="exp_region" class="form-label" style="display: block; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-light); margin-bottom: 0.35rem;">Geographic Region *</label>
+                <input type="text" id="exp_region" name="region" class="form-control" required placeholder="e.g. Fram Strait & Central Arctic Basin" style="width: 100%; padding: 0.45rem 0.7rem; border: 1px solid var(--color-border-dark); border-radius: 3px; font-size: 0.88rem;">
+                <span class="form-help" style="font-size: 0.74rem; color: var(--color-muted);">Sea, ocean basin, or terrestrial research territory.</span>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="exp_leader" class="form-label" style="display: block; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-light); margin-bottom: 0.35rem;">Chief Scientist / Team Leader *</label>
+                <input type="text" id="exp_leader" name="team_leader" class="form-control" required placeholder="e.g. Prof. Dr. Antje Boetius" style="width: 100%; padding: 0.45rem 0.7rem; border: 1px solid var(--color-border-dark); border-radius: 3px; font-size: 0.88rem;">
+                <span class="form-help" style="font-size: 0.74rem; color: var(--color-muted);">Lead Principal Investigator accountable for cruise records.</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-group">
+                    <label for="exp_start_date" class="form-label" style="display: block; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-light); margin-bottom: 0.35rem;">Departure Date *</label>
+                    <input type="date" id="exp_start_date" name="start_date" class="form-control" required style="width: 100%; padding: 0.45rem 0.7rem; border: 1px solid var(--color-border-dark); border-radius: 3px; font-size: 0.88rem;">
+                </div>
+                <div class="form-group">
+                    <label for="exp_end_date" class="form-label" style="display: block; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-light); margin-bottom: 0.35rem;">Return Date *</label>
+                    <input type="date" id="exp_end_date" name="end_date" class="form-control" required style="width: 100%; padding: 0.45rem 0.7rem; border: 1px solid var(--color-border-dark); border-radius: 3px; font-size: 0.88rem;">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="exp_status" class="form-label" style="display: block; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-light); margin-bottom: 0.35rem;">Operational Status *</label>
+                <select id="exp_status" name="status" class="form-control" required style="width: 100%; padding: 0.45rem 0.7rem; border: 1px solid var(--color-border-dark); border-radius: 3px; font-size: 0.88rem;">
+                    <option value="planned" selected>Planned (Pre-cruise preparation)</option>
+                    <option value="ongoing">Ongoing (Active in-field)</option>
+                    <option value="completed">Completed (Cruise concluded)</option>
+                    <option value="archived">Archived (Historical campaign)</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label for="exp_objectives" class="form-label" style="display: block; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-light); margin-bottom: 0.35rem;">Scientific Objectives & Scope *</label>
+                <textarea id="exp_objectives" name="objectives" rows="4" class="form-control" required placeholder="Summarize primary scientific investigations, target transects, instrumentation (CTD, coring, moorings), and observation parameters..."></textarea>
+                <span class="form-help" style="font-size: 0.74rem; color: var(--color-muted);">Brief overview of expedition scientific scope (min. 5 characters).</span>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                <button type="button" class="btn btn-secondary" onclick="closeExpeditionModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="modal-submit-btn">Register Expedition</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stats-ribbon {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        padding: 1.15rem 1.35rem;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-num {
+        font-family: var(--font-sans);
+        font-size: 1.65rem;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        color: var(--color-academic-navy);
+        line-height: 1.1;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--color-muted);
+        margin-top: 0.25rem;
+    }
+
+    .filter-panel {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 1.15rem 1.35rem;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+
+    @media (min-width: 640px) {
+        .filter-grid {
+            grid-template-columns: 160px 1fr 1fr auto;
+        }
+    }
+
+    .filter-field label {
+        display: block;
+        font-size: 0.765rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--color-ink);
+        margin-bottom: 0.35rem;
+    }
+
+    .filter-status-row {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--color-border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .expeditions-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    @media (min-width: 768px) {
+        .expeditions-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .expedition-card {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 1.35rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .expedition-card:hover {
+        border-color: var(--color-border-dark);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+    }
+
+    .card-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+    }
+
+    .region-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.76rem;
+        color: var(--color-muted);
+        font-weight: 500;
+    }
+
+    .expedition-title {
+        font-family: var(--font-sans);
+        font-size: 1.15rem;
+        line-height: 1.35;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+    }
+
+    .expedition-title a {
+        color: var(--color-academic-navy);
+        text-decoration: none;
+    }
+
+    .expedition-title a:hover {
+        color: var(--color-accent-blue);
+        text-decoration: underline;
+    }
+
+    .expedition-meta {
+        background-color: var(--color-paper);
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--radius-sm);
+        padding: 0.65rem 0.85rem;
+        margin-bottom: 0.85rem;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    @media (min-width: 480px) {
+        .expedition-meta {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .meta-label {
+        display: block;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--color-muted);
+    }
+
+    .meta-value {
+        color: var(--color-ink);
+        font-weight: 600;
+    }
+
+    .expedition-snippet {
+        font-size: 0.865rem;
+        color: var(--color-ink-light);
+        line-height: 1.55;
+        margin-bottom: 1.25rem;
+        flex-grow: 1;
+    }
+
+    .card-footer-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--color-border-light);
+        font-size: 0.78rem;
+    }
+
+    .output-counts {
+        display: flex;
+        gap: 0.45rem;
+    }
+
+    .output-pill {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        color: var(--color-muted);
+        background-color: var(--color-paper);
+        border: 1px solid var(--color-border);
+        padding: 0.15rem 0.45rem;
+        border-radius: var(--radius-xs);
+    }
+
+    .empty-state-box {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        color: var(--color-muted);
+        box-shadow: var(--shadow-sm);
+    }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Modal controls
+    function openExpeditionModal() {
+        const modal = document.getElementById('expeditionModal');
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        document.getElementById('exp_name').focus();
+    }
+
+    function closeExpeditionModal() {
+        const modal = document.getElementById('expeditionModal');
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+        document.getElementById('modal-error-alert').style.display = 'none';
+        document.getElementById('create-expedition-form').reset();
+    }
+
+    document.getElementById('expeditionModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeExpeditionModal();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('expeditionModal');
+            if (modal.classList.contains('active')) {
+                closeExpeditionModal();
+            }
+        }
+    });
+
+    async function handleCreateExpedition(event) {
+        event.preventDefault();
+        const form = event.target;
+        const submitBtn = document.getElementById('modal-submit-btn');
+        const errAlert = document.getElementById('modal-error-alert');
+
+        errAlert.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Registering...';
+
+        const payload = {
+            name: form.name.value.trim(),
+            region: form.region.value.trim(),
+            team_leader: form.team_leader.value.trim(),
+            start_date: form.start_date.value,
+            end_date: form.end_date.value,
+            status: form.status.value,
+            objectives: form.objectives.value.trim()
+        };
+
+        try {
+            const response = await fetch('/api/expeditions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                closeExpeditionModal();
+                window.location.href = `/expeditions/${data.id}`;
+            } else {
+                const errData = await response.json().catch(() => ({}));
+                errAlert.textContent = errData.detail || 'Failed to register expedition. Please verify inputs or ensure authorized session.';
+                errAlert.style.display = 'block';
+            }
+        } catch (err) {
+            errAlert.textContent = 'Network or server error while registering expedition.';
+            errAlert.style.display = 'block';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Register Expedition';
+        }
+    }
+
+    function applyFilters() {
+        const statusVal = document.getElementById('filter-status').value.toLowerCase();
+        const regionVal = document.getElementById('filter-region').value.trim().toLowerCase();
+        const searchVal = document.getElementById('filter-search').value.trim().toLowerCase();
+
+        const cards = document.querySelectorAll('.expedition-card');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const status = card.dataset.status || '';
+            const region = card.dataset.region || '';
+            const title = card.dataset.title || '';
+            const leader = card.dataset.leader || '';
+            const objectives = card.dataset.objectives || '';
+
+            const matchesStatus = !statusVal || status === statusVal;
+            const matchesRegion = !regionVal || region.includes(regionVal);
+            const matchesSearch = !searchVal || 
+                                  title.includes(searchVal) || 
+                                  leader.includes(searchVal) || 
+                                  objectives.includes(searchVal);
+
+            if (matchesStatus && matchesRegion && matchesSearch) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        const countIndicator = document.getElementById('visible-count');
+        if (countIndicator) countIndicator.textContent = visibleCount;
+
+        const noMatchMsg = document.getElementById('no-match-message');
+        if (noMatchMsg) {
+            noMatchMsg.style.display = (visibleCount === 0 && cards.length > 0) ? 'block' : 'none';
+        }
+    }
+
+    function resetFilters() {
+        document.getElementById('filter-status').value = '';
+        document.getElementById('filter-region').value = '';
+        document.getElementById('filter-search').value = '';
+        applyFilters();
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,716 @@
+{% extends "base.html" %}
+
+{% block title %}Expedition Media Gallery — Field Photos &amp; Video{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/">Home</a>
+  <span class="sep">/</span>
+  <span>Media Gallery</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="page-header-content">
+    <div class="page-kicker">Visual Field Documentation</div>
+    <h1>Expedition Media Gallery</h1>
+    <p class="page-description">
+      Primary photographic and video documentation captured during scientific voyages, ice-station deployments, benthic surveys, and atmospheric sampling runs.
+    </p>
+  </div>
+  <div>
+    <span class="badge badge-navy">{{ media_items|length if media_items is defined else (media|length if media is defined else 0) }} Assets</span>
+  </div>
+</section>
+
+<!-- Filter Toolbar -->
+<section class="filter-panel">
+  <form method="get" action="/media" class="filter-form" id="media-filter-form">
+    <!-- Type Filter Tabs -->
+    <div class="filter-group" style="flex: 1 1 260px;">
+      <label class="filter-label">Media Type</label>
+      {% set current_type = selected_type or (request.query_params.get('type') if request is defined else '') %}
+      <div class="pill-tabs">
+        <a href="?{% if selected_expedition_id %}expedition_id={{ selected_expedition_id }}&{% endif %}type=" 
+           class="pill-tab {% if not current_type or current_type == 'all' %}active{% endif %}">
+          All
+        </a>
+        <a href="?{% if selected_expedition_id %}expedition_id={{ selected_expedition_id }}&{% endif %}type=photo" 
+           class="pill-tab {% if current_type == 'photo' %}active{% endif %}">
+          Photos
+        </a>
+        <a href="?{% if selected_expedition_id %}expedition_id={{ selected_expedition_id }}&{% endif %}type=video" 
+           class="pill-tab {% if current_type == 'video' %}active{% endif %}">
+          Videos
+        </a>
+      </div>
+      <input type="hidden" name="type" id="input-type" value="{{ current_type }}">
+    </div>
+
+    <!-- Expedition Filter -->
+    <div class="filter-group" style="flex: 1 1 240px;">
+      <label class="filter-label" for="filter-expedition">Expedition</label>
+      <select id="filter-expedition" name="expedition_id" class="form-select" onchange="document.getElementById('media-filter-form').submit()">
+        <option value="">All Expeditions</option>
+        {% if expeditions is defined %}
+          {% for exp in expeditions %}
+            <option value="{{ exp.id }}" {% if selected_expedition_id|string == exp.id|string or (request is defined and request.query_params.get('expedition_id') == exp.id|string) %}selected{% endif %}>
+              {{ exp.name }}
+            </option>
+          {% endfor %}
+        {% endif %}
+      </select>
+    </div>
+
+    <!-- Tags / Search input -->
+    <div class="filter-group" style="flex: 2 1 220px;">
+      <label class="filter-label" for="filter-tags">Search Caption or Tags</label>
+      <div class="search-input-wrapper">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="filter-tags" name="tags" class="form-input search-input" placeholder="Search caption, tags, geographic features..." 
+               value="{{ selected_tags or (request.query_params.get('tags', '') if request is defined else '') }}">
+      </div>
+    </div>
+
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+        Filter
+      </button>
+      <a href="/media" class="btn btn-outline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        Reset
+      </a>
+    </div>
+  </form>
+</section>
+
+<!-- Gallery Grid -->
+{% set items = media_items if media_items is defined else (media if media is defined else []) %}
+<section class="gallery-section">
+  {% if items and items|length > 0 %}
+    <div class="gallery-grid" id="gallery-grid">
+      {% for item in items %}
+        <article class="media-card" 
+                 data-id="{{ item.id }}"
+                 data-type="{{ item.media_type }}"
+                 data-src="/api/media/{{ item.id }}/file"
+                 data-caption="{{ item.caption|e }}"
+                 data-location="{{ (item.location or '')|e }}"
+                 data-date="{% if item.timestamp %}{{ item.timestamp.strftime('%B %d, %Y') if item.timestamp.strftime is defined else item.timestamp }}{% elif item.created_at %}{{ item.created_at.strftime('%B %d, %Y') if item.created_at.strftime is defined else item.created_at }}{% endif %}"
+                 data-license="{{ item.license or 'CC-BY-4.0' }}"
+                 data-expedition="{% if item.expedition %}{{ item.expedition.name|e }}{% elif item.expedition_id %}Expedition #{{ item.expedition_id }}{% endif %}">
+          
+          <!-- Media Preview Container -->
+          <div class="media-thumbnail-wrap" onclick="openLightbox({{ loop.index0 }})">
+            {% if item.media_type == 'video' %}
+              <div class="video-preview-wrapper">
+                <video preload="metadata" muted playsinline class="media-thumb-asset">
+                  <source src="/api/media/{{ item.id }}/file#t=0.5" type="video/mp4">
+                  Your browser does not support video.
+                </video>
+                <div class="video-indicator">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                  <span>VIDEO</span>
+                </div>
+              </div>
+            {% else %}
+              <div class="thumb-media-wrapper">
+                <img src="/api/media/{{ item.id }}/file" 
+                     alt="{{ item.caption }}" 
+                     loading="lazy" 
+                     class="media-thumb-asset"
+                     onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+                <div class="media-placeholder-fallback" style="display: none;">
+                  <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg>
+                  <span class="placeholder-caption">Field Documentation</span>
+                  <span class="placeholder-sub">Archive Record #{{ item.id }}</span>
+                </div>
+              </div>
+            {% endif %}
+
+            <div class="media-hover-overlay">
+              <span class="btn-expand-hint">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                Expand View
+              </span>
+            </div>
+          </div>
+
+          <!-- Card Content -->
+          <div class="media-card-body">
+            <div class="media-card-top">
+              <span class="badge {% if item.media_type == 'video' %}badge-rust{% else %}badge-navy{% endif %}">
+                {{ item.media_type|upper }}
+              </span>
+              <span class="badge badge-license">{{ item.license or 'CC-BY-4.0' }}</span>
+            </div>
+
+            <p class="media-caption" title="{{ item.caption }}">
+              {{ item.caption }}
+            </p>
+
+            <div class="media-meta-footer">
+              {% if item.location %}
+                <div class="meta-item location-item">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span>{{ item.location }}</span>
+                </div>
+              {% endif %}
+
+              <div class="meta-item date-item">
+                {% if item.timestamp %}
+                  <span>{{ item.timestamp.strftime('%d %b %Y') if item.timestamp.strftime is defined else item.timestamp }}</span>
+                {% elif item.created_at %}
+                  <span>{{ item.created_at.strftime('%d %b %Y') if item.created_at.strftime is defined else item.created_at }}</span>
+                {% endif %}
+              </div>
+            </div>
+
+            {% if item.expedition %}
+              <div class="media-expedition-link">
+                <a href="/expeditions/{{ item.expedition.id }}">{{ item.expedition.name }}</a>
+              </div>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom: 1rem;">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+        <polyline points="21 15 16 10 5 21"></polyline>
+      </svg>
+      <h3>No Media Found</h3>
+      <p>No photographs or videos match the active filter criteria. Try resetting the media type or expedition filter.</p>
+      <a href="/media" class="btn btn-outline">Reset Media Filter</a>
+    </div>
+  {% endif %}
+</section>
+
+<!-- Lightbox Modal -->
+<div class="lightbox-modal" id="lightbox-modal" aria-hidden="true" role="dialog">
+  <div class="lightbox-backdrop" onclick="closeLightbox()"></div>
+
+  <div class="lightbox-dialog">
+    <!-- Close & Navigation controls -->
+    <button type="button" class="lightbox-close" onclick="closeLightbox()" aria-label="Close dialog">&times;</button>
+    <button type="button" class="lightbox-nav lightbox-prev" onclick="navigateLightbox(-1)" aria-label="Previous item">&larr;</button>
+    <button type="button" class="lightbox-nav lightbox-next" onclick="navigateLightbox(1)" aria-label="Next item">&rarr;</button>
+
+    <div class="lightbox-content-box">
+      <!-- Media viewport -->
+      <div class="lightbox-media-pane" id="lightbox-media-pane">
+        <!-- Injected via JavaScript: img or video element -->
+      </div>
+
+      <!-- Detail panel -->
+      <div class="lightbox-sidebar">
+        <div class="lightbox-header-row">
+          <span class="badge" id="lightbox-type-badge">Photo</span>
+          <span class="badge badge-license" id="lightbox-license-badge">CC-BY-4.0</span>
+        </div>
+
+        <h3 class="lightbox-caption" id="lightbox-caption">Caption</h3>
+
+        <dl class="lightbox-details-list">
+          <div class="meta-row">
+            <dt>Location</dt>
+            <dd id="lightbox-location">&mdash;</dd>
+          </div>
+          <div class="meta-row">
+            <dt>Recorded Date</dt>
+            <dd id="lightbox-date">&mdash;</dd>
+          </div>
+          <div class="meta-row">
+            <dt>Expedition</dt>
+            <dd id="lightbox-expedition">&mdash;</dd>
+          </div>
+        </dl>
+
+        <div class="lightbox-actions">
+          <a href="#" id="lightbox-download-link" class="btn btn-primary btn-sm" download target="_blank">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download Raw Media
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let currentIndex = 0;
+  let mediaCards = [];
+
+  document.addEventListener('DOMContentLoaded', () => {
+    mediaCards = Array.from(document.querySelectorAll('.media-card'));
+
+    // Check for 1x1 dummy images or broken files and show elegant field placeholder
+    document.querySelectorAll('.media-thumb-asset').forEach(img => {
+      const checkImg = () => {
+        if (img.naturalWidth <= 1) {
+          img.style.display = 'none';
+          const fallback = img.nextElementSibling;
+          if (fallback && fallback.classList.contains('media-placeholder-fallback')) {
+            fallback.style.display = 'flex';
+          }
+        }
+      };
+      if (img.complete) {
+        checkImg();
+      } else {
+        img.addEventListener('load', checkImg);
+      }
+    });
+  });
+
+  function openLightbox(index) {
+    if (!mediaCards.length) {
+      mediaCards = Array.from(document.querySelectorAll('.media-card'));
+    }
+    if (index < 0 || index >= mediaCards.length) return;
+    
+    currentIndex = index;
+    renderLightboxItem(mediaCards[currentIndex]);
+
+    const modal = document.getElementById('lightbox-modal');
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    const modal = document.getElementById('lightbox-modal');
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    
+    // Stop any video playback
+    const pane = document.getElementById('lightbox-media-pane');
+    pane.innerHTML = '';
+  }
+
+  function navigateLightbox(step) {
+    if (!mediaCards.length) return;
+    let newIndex = currentIndex + step;
+    if (newIndex < 0) newIndex = mediaCards.length - 1;
+    if (newIndex >= mediaCards.length) newIndex = 0;
+    openLightbox(newIndex);
+  }
+
+  function renderLightboxItem(card) {
+    const type = card.dataset.type;
+    const src = card.dataset.src;
+    const caption = card.dataset.caption || '';
+    const location = card.dataset.location || '—';
+    const date = card.dataset.date || '—';
+    const license = card.dataset.license || 'CC-BY-4.0';
+    const expedition = card.dataset.expedition || '—';
+
+    const pane = document.getElementById('lightbox-media-pane');
+    pane.innerHTML = '';
+
+    if (type === 'video') {
+      const video = document.createElement('video');
+      video.src = src;
+      video.controls = true;
+      video.autoplay = true;
+      video.className = 'lightbox-media-element';
+      pane.appendChild(video);
+    } else {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = caption;
+      img.className = 'lightbox-media-element';
+      pane.appendChild(img);
+    }
+
+    document.getElementById('lightbox-caption').innerText = caption;
+    document.getElementById('lightbox-location').innerText = location || '—';
+    document.getElementById('lightbox-date').innerText = date || '—';
+    document.getElementById('lightbox-expedition').innerText = expedition || '—';
+    document.getElementById('lightbox-license-badge').innerText = license;
+    document.getElementById('lightbox-type-badge').innerText = (type || 'photo').toUpperCase();
+    document.getElementById('lightbox-download-link').href = src;
+  }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('lightbox-modal');
+    if (!modal.classList.contains('is-open')) return;
+
+    if (e.key === 'Escape') {
+      closeLightbox();
+    } else if (e.key === 'ArrowLeft') {
+      navigateLightbox(-1);
+    } else if (e.key === 'ArrowRight') {
+      navigateLightbox(1);
+    }
+  });
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .gallery-section {
+    margin-top: 1.5rem;
+  }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.75rem;
+  }
+
+  .media-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.15s ease;
+  }
+
+  .media-card:hover {
+    border-color: var(--border-medium);
+  }
+
+  .media-thumbnail-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    min-height: 200px;
+    background-color: #f1f5f9;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 14px 14px;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .thumb-media-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .media-placeholder-fallback {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    background: #f8fafc;
+    color: var(--color-muted);
+    user-select: none;
+  }
+
+  .placeholder-caption {
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #475569;
+  }
+
+  .placeholder-sub {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: #94a3b8;
+  }
+
+  .media-thumb-asset {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.25s ease;
+  }
+
+  .media-card:hover .media-thumb-asset {
+    transform: scale(1.02);
+  }
+
+  .video-preview-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .video-indicator {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(15, 23, 42, 0.85);
+    color: #ffffff;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .media-hover-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 2;
+  }
+
+  .media-thumbnail-wrap:hover .media-hover-overlay {
+    opacity: 1;
+  }
+
+  .btn-expand-hint {
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    padding: 6px 14px;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .media-card-body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .media-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+  }
+
+  .media-caption {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--text-main);
+    margin-bottom: 0.85rem;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .media-meta-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 0.65rem;
+    gap: 0.5rem;
+  }
+
+  .location-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .media-expedition-link {
+    margin-top: 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  .media-expedition-link a {
+    color: var(--accent-ink);
+  }
+
+  /* ---------------- Lightbox Modal Styles ---------------- */
+  .lightbox-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .lightbox-modal.is-open {
+    display: flex;
+  }
+
+  .lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(18, 18, 20, 0.88);
+  }
+
+  .lightbox-dialog {
+    position: relative;
+    z-index: 1001;
+    max-width: 1080px;
+    width: 100%;
+    max-height: 90vh;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .lightbox-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    z-index: 1002;
+    background: rgba(24, 24, 27, 0.7);
+    color: #ffffff;
+    border: none;
+    font-size: 1.5rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1002;
+    background: rgba(24, 24, 27, 0.75);
+    color: #ffffff;
+    border: none;
+    font-size: 1.25rem;
+    width: 40px;
+    height: 48px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+  }
+
+  .lightbox-nav:hover {
+    background: var(--text-main);
+  }
+
+  .lightbox-prev { left: 0; }
+  .lightbox-next { right: 0; }
+
+  .lightbox-content-box {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    height: 100%;
+    max-height: 85vh;
+  }
+
+  .lightbox-media-pane {
+    background: #0d0d0e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .lightbox-media-element {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+  }
+
+  .lightbox-sidebar {
+    padding: 2rem 1.75rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-surface);
+  }
+
+  .lightbox-header-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .lightbox-caption {
+    font-size: 1.15rem;
+    font-family: var(--font-serif);
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+    color: var(--text-main);
+  }
+
+  .lightbox-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+  }
+
+  .lightbox-actions {
+    margin-top: auto;
+  }
+
+  @media (max-width: 860px) {
+    .lightbox-content-box {
+      grid-template-columns: 1fr;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .lightbox-media-pane {
+      min-height: 240px;
+    }
+  }
+</style>
+{% endblock %}

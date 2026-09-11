@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}{{ report.title }} — Technical Report{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="/">Home</a>
+  <span class="sep">/</span>
+  <a href="/reports">Technical Reports</a>
+  <span class="sep">/</span>
+  <span>TR-{{ report.id }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<article class="report-detail-container">
+  <!-- Article Header -->
+  <header class="detail-header">
+    <div class="detail-kicker-row">
+      <span class="page-kicker">Technical Report &bull; Doc #{{ report.id }}</span>
+      <div class="detail-header-badges">
+        {% if report.doi %}
+          <a href="https://doi.org/{{ report.doi }}" target="_blank" rel="noopener noreferrer" class="badge">
+            DOI: {{ report.doi }}
+          </a>
+        {% endif %}
+        <span class="badge badge-license">{{ report.license or 'CC-BY-4.0' }}</span>
+        {% if report.published %}
+          <span class="badge badge-sage">Published</span>
+        {% else %}
+          <span class="badge badge-ochre">Draft / In Review</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <h1 class="detail-title">{{ report.title }}</h1>
+
+    <div class="detail-byline">
+      <div class="detail-authors">
+        <span class="by-label">Authors:</span>
+        <span class="author-names">{{ report.authors }}</span>
+      </div>
+      {% if report.created_at %}
+        <div class="detail-date">
+          <span>Date of Deposit:</span>
+          <strong>{{ report.created_at.strftime('%B %d, %Y') if report.created_at.strftime is defined else report.created_at }}</strong>
+        </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Two Column Content Grid -->
+  <div class="detail-grid">
+    <!-- Main Content (Abstract & Download) -->
+    <div class="detail-main-col">
+      <!-- Abstract -->
+      <section class="detail-section">
+        <h2 class="section-heading">Abstract</h2>
+        <div class="abstract-body">
+          {{ report.abstract }}
+        </div>
+      </section>
+
+      <!-- Keywords -->
+      {% if report.keywords %}
+        <section class="detail-section">
+          <h3 class="subsection-heading">Indexing Terms &amp; Keywords</h3>
+          <div class="detail-keywords-wrap">
+            {% for kw in report.keywords.split(',') %}
+              <span class="keyword-pill">{{ kw.strip() }}</span>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <!-- Primary Download Callout Box -->
+      <section class="download-box">
+        <div class="download-box-inner">
+          <div class="download-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="12" y1="18" x2="12" y2="12"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+          </div>
+
+          <div class="download-details">
+            <h3 class="download-filename">
+              {% if report.file_path %}
+                {{ report.file_path.split('/')[-1].split('\\')[-1] }}
+              {% else %}
+                Technical Report Document
+              {% endif %}
+            </h3>
+            <p class="download-meta">
+              Format: 
+              <strong>
+                {% if report.file_path and report.file_path.lower().endswith('.pdf') %}
+                  PDF (Portable Document Format)
+                {% elif report.file_path and (report.file_path.lower().endswith('.docx') or report.file_path.lower().endswith('.doc')) %}
+                  DOCX (Microsoft Word)
+                {% else %}
+                  Archival Scientific Document
+                {% endif %}
+              </strong>
+              &bull; License: {{ report.license or 'CC-BY-4.0' }}
+            </p>
+          </div>
+
+          <div class="download-action">
+            <a href="/api/reports/{{ report.id }}/download" class="btn btn-download" download>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Download File</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Citation Box -->
+      <section class="citation-block">
+        <div class="citation-header">
+          <span class="citation-title">How to Cite This Report</span>
+          <button type="button" class="btn-copy-cite" onclick="copyCitation()">Copy Citation</button>
+        </div>
+        <div class="citation-text" id="citation-text">
+          {{ report.authors }} ({% if report.created_at %}{{ report.created_at.strftime('%Y') if report.created_at.strftime is defined else report.created_at }}{% else %}n.d.{% endif %}). <em>{{ report.title }}</em>. {% if report.expedition %}Expedition: {{ report.expedition.name }}. {% endif %}{% if report.doi %}https://doi.org/{{ report.doi }}{% endif %}
+        </div>
+      </section>
+
+      <div class="back-nav-row">
+        <a href="/reports" class="btn btn-outline">
+          &larr; Back to Technical Reports List
+        </a>
+      </div>
+    </div>
+
+    <!-- Sidebar / Linked Expedition & Metadata -->
+    <aside class="detail-sidebar">
+      <!-- Expedition Card -->
+      <div class="sidebar-widget">
+        <div class="widget-kicker">Linked Scientific Expedition</div>
+        {% if report.expedition %}
+          <div class="expedition-sidebar-card">
+            <h3 class="expedition-name">
+              <a href="/expeditions/{{ report.expedition.id }}">{{ report.expedition.name }}</a>
+            </h3>
+            <dl class="expedition-meta-list">
+              <div class="meta-row">
+                <dt>Region</dt>
+                <dd>{{ report.expedition.region }}</dd>
+              </div>
+              <div class="meta-row">
+                <dt>Team Leader</dt>
+                <dd>{{ report.expedition.team_leader }}</dd>
+              </div>
+              <div class="meta-row">
+                <dt>Duration</dt>
+                <dd>
+                  {{ report.expedition.start_date }} to {{ report.expedition.end_date }}
+                </dd>
+              </div>
+              <div class="meta-row">
+                <dt>Status</dt>
+                <dd><span class="badge">{{ report.expedition.status|capitalize }}</span></dd>
+              </div>
+            </dl>
+            {% if report.expedition.objectives %}
+              <div class="expedition-brief-obj">
+                <strong>Objectives:</strong> {{ report.expedition.objectives[:160] }}...
+              </div>
+            {% endif %}
+          </div>
+        {% elif report.expedition_id %}
+          <div class="expedition-sidebar-card">
+            <h3 class="expedition-name">Expedition #{{ report.expedition_id }}</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Expedition record linked by catalog ID.</p>
+          </div>
+        {% else %}
+          <div class="expedition-sidebar-card">
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Independent technical report.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Document Metadata Card -->
+      <div class="sidebar-widget">
+        <div class="widget-kicker">Document Metadata</div>
+        <dl class="expedition-meta-list">
+          <div class="meta-row">
+            <dt>Record ID</dt>
+            <dd><code>REP-{{ report.id }}</code></dd>
+          </div>
+          {% if report.doi %}
+            <div class="meta-row">
+              <dt>DOI</dt>
+              <dd>
+                <a href="https://doi.org/{{ report.doi }}" target="_blank" rel="noopener noreferrer" style="font-family: var(--font-mono); font-size: 0.8rem;">
+                  {{ report.doi }}
+                </a>
+              </dd>
+            </div>
+          {% endif %}
+          <div class="meta-row">
+            <dt>License</dt>
+            <dd>{{ report.license or 'CC-BY-4.0' }}</dd>
+          </div>
+          <div class="meta-row">
+            <dt>Access Level</dt>
+            <dd>Open Access (Public)</dd>
+          </div>
+          {% if report.updated_at %}
+            <div class="meta-row">
+              <dt>Last Updated</dt>
+              <dd>{{ report.updated_at.strftime('%Y-%m-%d') if report.updated_at.strftime is defined else report.updated_at }}</dd>
+            </div>
+          {% endif %}
+        </dl>
+      </div>
+    </aside>
+  </div>
+</article>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function copyCitation() {
+    const text = document.getElementById('citation-text').innerText.trim();
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.querySelector('.btn-copy-cite');
+      const original = btn.innerText;
+      btn.innerText = 'Copied!';
+      btn.style.color = '#2e5c46';
+      setTimeout(() => {
+        btn.innerText = original;
+        btn.style.color = '';
+      }, 2000);
+    });
+  }
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .report-detail-container {
+    max-width: var(--container-max);
+    margin: 0 auto;
+  }
+
+  .detail-header {
+    border-bottom: 2px solid var(--border-dark);
+    padding-bottom: 1.75rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .detail-kicker-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .detail-header-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .detail-title {
+    font-size: 2.3rem;
+    line-height: 1.2;
+    margin: 0.5rem 0 1.25rem;
+    color: var(--text-main);
+  }
+
+  .detail-byline {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.95rem;
+  }
+
+  .detail-authors {
+    color: var(--text-secondary);
+  }
+
+  .by-label {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-right: 0.4rem;
+  }
+
+  .author-names {
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .detail-date {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 3rem;
+    align-items: start;
+  }
+
+  .detail-section {
+    margin-bottom: 2.25rem;
+  }
+
+  .section-heading {
+    font-size: 1.35rem;
+    border-bottom: 1px solid var(--border-medium);
+    padding-bottom: 0.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .subsection-heading {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-main);
+  }
+
+  .abstract-body {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: var(--text-main);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    padding: 1.75rem 2rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .detail-keywords-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  /* Download Callout Box */
+  .download-box {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-medium);
+    border-left: 4px solid var(--accent-ink);
+    border-radius: var(--radius-sm);
+    padding: 1.5rem;
+    margin-bottom: 2.25rem;
+  }
+
+  .download-box-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+  }
+
+  .download-icon {
+    color: var(--accent-ink);
+    flex-shrink: 0;
+  }
+
+  .download-details {
+    flex: 1 1 300px;
+  }
+
+  .download-filename {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+    word-break: break-all;
+  }
+
+  .download-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* Citation Block */
+  .citation-block {
+    background-color: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2.5rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .citation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+  }
+
+  .citation-title {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .btn-copy-cite {
+    background: none;
+    border: 1px solid var(--border-medium);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-secondary);
+  }
+
+  .btn-copy-cite:hover {
+    color: var(--text-main);
+    border-color: var(--text-main);
+  }
+
+  .citation-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    user-select: all;
+  }
+
+  /* Sidebar widgets */
+  .detail-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .sidebar-widget {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 1.5rem;
+  }
+
+  .widget-kicker {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 0.4rem;
+  }
+
+  .expedition-sidebar-card .expedition-name {
+    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .expedition-meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    border-bottom: 1px dashed var(--border-subtle);
+    padding-bottom: 0.35rem;
+  }
+
+  .meta-row dt {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .meta-row dd {
+    font-weight: 500;
+    color: var(--text-main);
+    text-align: right;
+  }
+
+  .expedition-brief-obj {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .back-nav-row {
+    margin-top: 1rem;
+  }
+
+  @media (max-width: 860px) {
+    .detail-grid {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+  }
+</style>
+{% endblock %}
